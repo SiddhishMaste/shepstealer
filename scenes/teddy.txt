@@ -1,0 +1,39 @@
+# A teddy bear built from spheres, on a blue studio backdrop.
+settings width 640 height 640 spp 16 depth 4 ambient 0.16 seed 3
+camera eye 0 2.5 9  lookat 0 1.9 0  up 0 1 0  fov 34
+background color 0.30 0.52 0.92
+
+material backdrop matte color 0.28 0.5 0.9  specular 0.02
+material fur      matte color 0.55 0.34 0.18  specular 0.08  shininess 16
+material belly    matte color 0.86 0.66 0.44  specular 0.08  shininess 16
+material dark     matte color 0.06 0.045 0.04 specular 0.7  shininess 80
+
+# studio: floor and back wall
+plane point 0 0 0   normal 0 1 0  material backdrop
+plane point 0 0 -3  normal 0 0 1  material backdrop
+
+# body and belly
+sphere center 0 1.25 0      radius 1.0   material fur
+sphere center 0 1.1 0.45    radius 0.72  material belly
+
+# head, ears, snout, nose, eyes
+sphere center 0 2.75 0.1    radius 0.8   material fur
+sphere center -0.62 3.4 0   radius 0.28  material fur
+sphere center 0.62 3.4 0    radius 0.28  material fur
+sphere center -0.62 3.4 0.18 radius 0.17 material belly
+sphere center 0.62 3.4 0.18  radius 0.17 material belly
+sphere center 0 2.55 0.8    radius 0.33  material belly
+sphere center 0 2.72 1.1    radius 0.11  material dark
+sphere center -0.28 2.95 0.77 radius 0.09 material dark
+sphere center 0.28 2.95 0.77  radius 0.09 material dark
+
+# arms and legs
+sphere center -1.0 1.5 0.25 radius 0.38 material fur
+sphere center 1.0 1.5 0.25  radius 0.38 material fur
+sphere center -0.6 0.42 0.55 radius 0.45 material fur
+sphere center 0.6 0.42 0.55  radius 0.45 material fur
+sphere center -0.6 0.45 0.97 radius 0.2  material belly
+sphere center 0.6 0.45 0.97  radius 0.2  material belly
+
+light position -4 6 6  color 1 0.97 0.92  intensity 1.0
+light position 5 3 5   color 0.8 0.85 1   intensity 0.5

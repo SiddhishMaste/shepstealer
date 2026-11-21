@@ -1,0 +1,19 @@
+# Three spheres on a checkered floor: matte, mirror and glass.
+settings width 640 height 360 spp 16 depth 6 ambient 0.12 seed 7
+camera eye 0 2.2 7.5  lookat 0 0.9 0  up 0 1 0  fov 36
+background top 0.35 0.55 0.95  bottom 0.95 0.97 1.0
+
+material floor  matte  color 0.88 0.88 0.88  checker 0.12 0.13 0.16  scale 1  specular 0.05
+material red    matte  color 0.8 0.14 0.11  shininess 48
+material gold   matte  color 0.95 0.72 0.22  specular 0.5  shininess 64
+material chrome mirror color 0.95 0.96 0.98
+material glass  glass  color 0.92 1.0 0.96  ior 1.5
+
+plane  point 0 0 0  normal 0 1 0  material floor
+sphere center -2.3 1 0   radius 1    material red
+sphere center 0 1 0      radius 1    material chrome
+sphere center 2.3 1 0    radius 1    material glass
+sphere center 0.9 0.38 2.4 radius 0.38 material gold
+
+light position -5 9 5  color 1 1 1  intensity 1
+light position 6 6 4   color 1 0.85 0.7  intensity 0.45
