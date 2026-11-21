@@ -1,3 +1,5 @@
 build/
 *.ppm
 *.png
+.venv/
+__pycache__/
