@@ -1,5 +1,9 @@
 # SheepStealer Engine 1.0
 
+**Live demo:** https://sheepstealer.onrender.com
+(The free server sleeps when idle, so the first load can take about a minute.)
+
+
 A CPU ray tracer written in C++17. It reads a scene file and renders a PNG or PPM image.
 
 ## Build
