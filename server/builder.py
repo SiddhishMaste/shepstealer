@@ -554,8 +554,20 @@ def cat(p, col):
     p.cyl((.2, .3, -.7), (.9, 1.7, -.8), .12, f, seg=14); p.sphere((.9, 1.7, -.8), .12, f)
 
 
+UI_GROUPS = {
+    "Animals": ["teddy", "bunny", "cat", "duck", "penguin"],
+    "Food": ["icecream", "cupcake", "cake", "pizza", "donut", "apple", "lollipop"],
+    "Buildings": ["house", "castle", "lighthouse", "windmill", "igloo", "tent"],
+    "Nature": ["tree", "xmastree", "flower", "mushroom", "cactus", "sun", "cloud", "pumpkin"],
+    "Toys and fun": ["car", "rocket", "robot", "balloon", "ball", "snowman"],
+    "Street and home": ["table", "chair", "bench", "fence", "lamp", "mailbox", "trafficcone"],
+}
+
+
 def object_list():
-    return [dict(key=o["key"], title=o["title"], default=o["default"]) for o in OBJECTS.values()]
+    group_of = {k: g for g, keys in UI_GROUPS.items() for k in keys}
+    return [dict(key=o["key"], title=o["title"], default=o["default"], group=group_of.get(o["key"], "Toys and fun"))
+            for o in OBJECTS.values()]
 
 
 # ---------------------------------------------------------------- composing a scene

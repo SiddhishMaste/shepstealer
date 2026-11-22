@@ -12,158 +12,206 @@
   :root {
     --paper: #f2f0fb; --surface: #ffffff; --ink: #1d1b34; --muted: #625f86; --line: #d9d5ee;
     --blue: #3b5bff; --blue-ink: #ffffff; --soft: #e8e5f8; --warn: #8a4b00; --warn-bg: #fff1d6; --bad: #b3261e;
+    --shadow: 0 8px 28px rgba(29, 27, 52, .12);
     --tint: 190, 205, 245;
     --display: "Bricolage Grotesque", "Trebuchet MS", system-ui, sans-serif;
     --body: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --navh: 64px;
   }
   @media (prefers-color-scheme: dark) {
     :root {
       --paper: #14122b; --surface: #1e1b3d; --ink: #ece9ff; --muted: #a29fc9; --line: #35316a;
       --blue: #7d91ff; --blue-ink: #10102a; --soft: #2a2655; --warn: #ffd08a; --warn-bg: #3b2c10; --bad: #ff8a80;
+      --shadow: 0 8px 28px rgba(0, 0, 0, .45);
     }
   }
   * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
   html { scroll-behavior: smooth; }
-  body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.55 var(--body); }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.55 var(--body); min-height: 100vh; }
   .wrap { max-width: 1160px; margin: 0 auto; padding: 0 20px; }
   a { color: inherit; }
-  :focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; border-radius: 6px; }
-  button, select, textarea { font: inherit; color: inherit; }
+  button, select, textarea, input { font: inherit; color: inherit; }
   button { cursor: pointer; }
+  :focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; border-radius: 6px; }
 
-  /* header */
-  .top { display: flex; align-items: center; justify-content: space-between; padding: 18px 0; gap: 16px; }
+  /* top bar and navigation */
+  .bar { position: sticky; top: 0; z-index: 20; background: color-mix(in srgb, var(--paper) 88%, transparent); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
+  .bar .wrap { display: flex; align-items: center; justify-content: space-between; height: var(--navh); gap: 16px; }
   .brand { display: flex; align-items: center; gap: 10px; font: 700 1.2rem var(--display); text-decoration: none; }
   .brand svg { width: 30px; height: 30px; flex: none; }
-  .nav { display: flex; gap: 6px; flex-wrap: nowrap; }
-  .nav a { white-space: nowrap; }
-  .nav a { text-decoration: none; padding: 6px 12px; border-radius: 999px; color: var(--muted); font-weight: 600; font-size: .95rem; }
-  .nav a:hover { background: var(--soft); color: var(--ink); }
+  .tabs { display: flex; gap: 4px; }
+  .tab { display: flex; align-items: center; gap: 8px; text-decoration: none; padding: 8px 14px; border-radius: 999px; color: var(--muted); font-weight: 600; }
+  .tab svg { width: 18px; height: 18px; flex: none; }
+  .tab:hover { background: var(--soft); color: var(--ink); }
+  .tab[aria-current="page"] { background: var(--blue); color: var(--blue-ink); }
+  .code-link { color: var(--muted); font-weight: 600; text-decoration: none; padding: 8px 12px; border-radius: 999px; }
+  .code-link:hover { background: var(--soft); color: var(--ink); }
 
-  /* sentence box */
-  .compose { padding: 20px 0 8px; }
-  h1 { font: 700 clamp(1.9rem, 4.4vw, 2.9rem)/1.05 var(--display); letter-spacing: -.02em; margin: 0 0 8px; max-width: 24ch; }
-  .lead { margin: 0 0 16px; color: var(--muted); max-width: 56ch; font-size: 1.05rem; }
-  .prompt { display: flex; gap: 10px; background: var(--surface); border: 2px solid var(--line); border-radius: 22px; padding: 10px 10px 10px 18px; align-items: flex-end; }
-  .prompt:focus-within { border-color: var(--blue); }
-  .prompt textarea { flex: 1; border: 0; background: transparent; resize: none; outline: none; font: 500 clamp(1.15rem, 2.4vw, 1.55rem)/1.3 var(--display); padding: 8px 0; min-height: 2.7em; }
-  .prompt textarea::placeholder { color: var(--muted); opacity: .7; }
-  .go { background: var(--blue); color: var(--blue-ink); border: 0; border-radius: 14px; padding: 14px 26px; font: 700 1.05rem var(--display); }
-  .go:hover { filter: brightness(1.08); }
-  .go:disabled, .ghost:disabled { opacity: .55; cursor: progress; }
+  main { padding: 28px 0 60px; }
+  .view { animation: none; }
+  h1 { font: 700 clamp(1.9rem, 4.2vw, 2.8rem)/1.08 var(--display); letter-spacing: -.02em; margin: 0 0 8px; max-width: 24ch; }
+  h2.title { font: 700 clamp(1.5rem, 3vw, 2.1rem)/1.15 var(--display); margin: 0 0 6px; letter-spacing: -.01em; }
+  h3 { font: 700 1.1rem var(--display); margin: 0 0 8px; }
+  .lead { margin: 0 0 18px; color: var(--muted); max-width: 60ch; font-size: 1.05rem; }
   .msg { min-height: 1.6em; margin: 10px 4px 0; font-weight: 600; }
   .msg.err { color: var(--bad); }
-  .suggest { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 0; }
-  #suggest { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 6px; }
-  #suggest .chip { flex: none; }
-  .chip { border: 1.5px solid var(--line); background: var(--surface); border-radius: 999px; padding: 6px 14px; font-size: .92rem; }
-  .chip:hover { border-color: var(--blue); }
-  .opts { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; margin: 14px 4px 0; color: var(--muted); font-size: .95rem; }
-  .opts select { background: var(--surface); border: 1.5px solid var(--line); border-radius: 10px; padding: 6px 10px; margin-left: 6px; color: var(--ink); }
 
-  /* stage */
-  .stage { margin-top: 14px; display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 18px; align-items: start; }
+  .btn { background: var(--blue); color: var(--blue-ink); border: 0; border-radius: 14px; padding: 13px 26px; font: 700 1.05rem var(--display); }
+  .btn:hover { filter: brightness(1.08); }
+  .btn:disabled, .soft:disabled { opacity: .55; cursor: progress; }
+  .soft { display: block; text-align: center; text-decoration: none; background: var(--soft); border: 0; border-radius: 12px; padding: 10px 14px; font-weight: 600; }
+  .soft:hover { background: var(--line); }
+  .chip { border: 1.5px solid var(--line); background: var(--surface); border-radius: 999px; padding: 6px 14px; font-size: .93rem; }
+  .chip:hover { border-color: var(--blue); }
+  .chip[aria-pressed="true"] { background: var(--blue); border-color: var(--blue); color: var(--blue-ink); }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .scrollrow { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; }
+  .scrollrow .chip { flex: none; }
+  select { background: var(--surface); border: 1.5px solid var(--line); border-radius: 10px; padding: 7px 10px; }
+
+  /* create page */
+  .prompt { display: flex; gap: 10px; background: var(--surface); border: 2px solid var(--line); border-radius: 22px; padding: 10px 10px 10px 18px; align-items: flex-end; }
+  .prompt:focus-within { border-color: var(--blue); }
+  .prompt textarea { flex: 1; border: 0; background: transparent; resize: none; outline: none; font: 500 clamp(1.15rem, 2.4vw, 1.5rem)/1.3 var(--display); padding: 8px 0; min-height: 2.7em; }
+  .prompt textarea::placeholder { color: var(--muted); opacity: .7; }
+  .stage { margin-top: 18px; display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 18px; align-items: start; }
   .frame { position: relative; border-radius: 28px; overflow: hidden; background: rgb(var(--tint)); padding: clamp(10px, 2.4vw, 26px); transition: background-color .6s ease; }
   .frame img { display: block; width: 100%; height: auto; border-radius: 16px; background: rgba(255,255,255,.4); aspect-ratio: 16 / 9; object-fit: cover; }
   .busy { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(20, 18, 43, .38); }
   .busy.on { display: flex; }
-  .busy p { margin: 0; background: var(--surface); padding: 10px 18px; border-radius: 999px; font-weight: 600; box-shadow: 0 6px 24px rgba(20,18,43,.25); }
+  .busy p { margin: 0; background: var(--surface); padding: 10px 18px; border-radius: 999px; font-weight: 600; box-shadow: var(--shadow); }
   .busy p::before { content: ""; display: inline-block; width: 12px; height: 12px; margin-right: 10px; border-radius: 50%; background: var(--blue); animation: pulse 1s ease-in-out infinite; }
   @keyframes pulse { 50% { transform: scale(1.7); opacity: .4; } }
-  @media (prefers-reduced-motion: reduce) { .busy p::before { animation: none; } html { scroll-behavior: auto; } .frame { transition: none; } }
-
-  .facts { background: var(--surface); border: 1.5px solid var(--line); border-radius: 22px; padding: 20px; }
-  .facts h2 { font: 700 1.15rem var(--display); margin: 0 0 8px; }
-  .facts ul { margin: 0 0 12px; padding-left: 1.1em; }
-  .facts li { margin: 2px 0; }
-  .facts .time { color: var(--muted); margin: 0 0 14px; }
+  .panel { background: var(--surface); border: 1.5px solid var(--line); border-radius: 22px; padding: 20px; }
+  .panel ul { margin: 0 0 12px; padding-left: 1.1em; }
+  .panel li { margin: 2px 0; }
+  .time { color: var(--muted); margin: 0 0 14px; }
   .skipped { background: var(--warn-bg); color: var(--warn); border-radius: 12px; padding: 10px 12px; margin: 0 0 14px; font-size: .93rem; }
-  .actions { display: flex; flex-direction: column; gap: 8px; }
-  .ghost, .dl { display: block; text-align: center; text-decoration: none; background: var(--soft); border: 0; border-radius: 12px; padding: 10px 14px; font-weight: 600; }
-  .ghost:hover, .dl:hover { background: var(--line); }
-  .dl[hidden] { display: none; }
-
+  .settings { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 0 0 14px; padding: 14px 0; border-block: 1px solid var(--line); }
+  .settings label { display: grid; gap: 4px; font-size: .88rem; color: var(--muted); }
+  .settings select { width: 100%; color: var(--ink); }
+  .actions { display: grid; gap: 8px; }
   .history { display: flex; gap: 10px; overflow-x: auto; padding: 14px 2px 4px; }
   .history button { flex: none; width: 112px; padding: 0; border: 2px solid transparent; border-radius: 12px; overflow: hidden; background: none; }
   .history button[aria-current="true"] { border-color: var(--blue); }
   .history img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; }
 
-  /* sections */
-  section.block { padding: 54px 0 0; }
-  h2.title { font: 700 clamp(1.5rem, 3vw, 2.1rem)/1.15 var(--display); margin: 0 0 6px; letter-spacing: -.01em; }
-  .sub { color: var(--muted); margin: 0 0 20px; max-width: 62ch; }
-  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
-  .card { text-align: left; padding: 0; border: 1.5px solid var(--line); background: var(--surface); border-radius: 16px; overflow: hidden; display: flex; flex-direction: column; }
-  .card:hover { border-color: var(--blue); }
+  /* gallery */
+  .tools { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin: 0 0 18px; }
+  .search { flex: 1 1 220px; max-width: 340px; background: var(--surface); border: 1.5px solid var(--line); border-radius: 999px; padding: 9px 16px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 14px; }
+  .card { text-align: left; padding: 0; border: 1.5px solid var(--line); background: var(--surface); border-radius: 16px; overflow: hidden; display: flex; flex-direction: column; position: relative; }
+  .card:hover { border-color: var(--blue); box-shadow: var(--shadow); }
   .card img { display: block; width: 100%; aspect-ratio: 16 / 10; object-fit: cover; background: var(--soft); }
   .card span { padding: 8px 12px 10px; font-weight: 600; font-size: .95rem; }
-  .card.added { border-color: var(--blue); }
-  .words { display: grid; gap: 22px; }
-  .words h3 { margin: 0 0 8px; font: 700 1.05rem var(--display); }
-  .swatches { display: flex; flex-wrap: wrap; gap: 8px; }
+  .card b { position: absolute; top: 8px; right: 8px; background: var(--blue); color: var(--blue-ink); border-radius: 999px; min-width: 26px; height: 26px; padding: 0 8px; display: grid; place-items: center; font-size: .85rem; }
+  .empty { color: var(--muted); padding: 30px 0; }
+  .sentencebar { position: sticky; bottom: 14px; margin-top: 22px; background: var(--surface); border: 2px solid var(--blue); border-radius: 18px; padding: 10px 10px 10px 18px; display: flex; gap: 10px; align-items: center; box-shadow: var(--shadow); z-index: 10; }
+  .sentencebar p { margin: 0; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+  .sentencebar .btn { padding: 9px 20px; }
+  .sentencebar .plain { background: none; border: 0; color: var(--muted); font-weight: 600; padding: 8px; }
+
+  /* guide */
+  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 30px; }
+  .step { background: var(--surface); border: 1.5px solid var(--line); border-radius: 18px; padding: 18px; }
+  .step p { margin: 0 0 12px; color: var(--muted); }
+  .step .chip { display: block; width: 100%; text-align: left; border-radius: 12px; margin: 6px 0 0; }
+  .swatches { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 26px; }
   .swatch { display: flex; align-items: center; gap: 8px; border: 1.5px solid var(--line); background: var(--surface); border-radius: 999px; padding: 4px 12px 4px 4px; font-size: .92rem; }
   .swatch i { width: 22px; height: 22px; border-radius: 50%; border: 1px solid rgba(0,0,0,.18); display: block; }
   .swatch:hover { border-color: var(--blue); }
 
-  /* scene editor */
-  .editor { background: var(--surface); border: 1.5px solid var(--line); border-radius: 22px; padding: 20px; }
-  .editor .bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 12px; }
-  .editor select { background: var(--paper); border: 1.5px solid var(--line); border-radius: 10px; padding: 8px 10px; }
-  .editor textarea { width: 100%; height: 340px; resize: vertical; background: var(--paper); border: 1.5px solid var(--line); border-radius: 14px; padding: 12px; font: 13px/1.5 ui-monospace, SFMono-Regular, Consolas, monospace; white-space: pre; overflow: auto; }
-  .editor .go { margin-top: 12px; }
-  .foot { margin: 64px 0 40px; color: var(--muted); font-size: .95rem; max-width: 70ch; }
+  /* scene file */
+  .split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+  .editor { background: var(--surface); border: 1.5px solid var(--line); border-radius: 22px; padding: 16px; }
+  .editor .head { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 12px; }
+  .code { display: grid; grid-template-columns: auto 1fr; background: var(--paper); border: 1.5px solid var(--line); border-radius: 14px; overflow: hidden; height: 420px; }
+  .code pre, .code textarea { margin: 0; padding: 12px 10px; font: 13px/1.5 ui-monospace, SFMono-Regular, Consolas, monospace; white-space: pre; }
+  .code pre { color: var(--muted); text-align: right; background: var(--soft); overflow: hidden; user-select: none; }
+  .code textarea { border: 0; outline: none; background: transparent; resize: none; overflow: auto; }
+  .code:focus-within { border-color: var(--blue); }
+  .code .errline { background: var(--warn-bg); }
+  .preview { position: relative; border-radius: 22px; overflow: hidden; background: rgb(var(--tint)); padding: clamp(10px, 2vw, 20px); transition: background-color .6s ease; }
+  .preview img { display: block; width: 100%; border-radius: 14px; background: rgba(255,255,255,.4); aspect-ratio: 16 / 9; object-fit: cover; }
 
-  @media (max-width: 520px) { .nav a:nth-child(2), .nav a:nth-child(4) { display: none; } }
-  @media (max-width: 860px) {
-    .stage { grid-template-columns: 1fr; }
+  /* about */
+  .pipeline { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin: 0 0 34px; counter-reset: s; }
+  .pipe { position: relative; background: var(--surface); border: 1.5px solid var(--line); border-radius: 16px; padding: 14px; }
+  .pipe:not(:last-child)::after { content: ""; position: absolute; right: -9px; top: 50%; width: 8px; height: 8px; border-top: 2px solid var(--blue); border-right: 2px solid var(--blue); transform: translateY(-50%) rotate(45deg); }
+  .pipe b { display: block; font: 700 1rem var(--display); }
+  .pipe span { color: var(--muted); font-size: .9rem; }
+  .facts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 34px; }
+  .fact { background: var(--surface); border: 1.5px solid var(--line); border-radius: 16px; padding: 14px 16px; }
+  .fact b { display: block; font: 700 1.8rem/1.1 var(--display); }
+  .fact span { color: var(--muted); font-size: .92rem; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .plainlist { margin: 0 0 24px; padding-left: 1.2em; }
+  .plainlist li { margin: 4px 0; }
+  table { border-collapse: collapse; width: 100%; background: var(--surface); border-radius: 14px; overflow: hidden; border: 1.5px solid var(--line); }
+  th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+  th { background: var(--soft); font-family: var(--display); }
+  tr:last-child td { border-bottom: 0; }
+
+  .toast { position: fixed; left: 50%; bottom: 92px; transform: translateX(-50%); background: var(--ink); color: var(--paper); padding: 10px 18px; border-radius: 999px; font-weight: 600; box-shadow: var(--shadow); z-index: 40; max-width: calc(100vw - 32px); }
+  .foot { margin: 56px 0 0; color: var(--muted); font-size: .95rem; max-width: 70ch; }
+
+  @media (prefers-reduced-motion: reduce) { .busy p::before { animation: none; } html { scroll-behavior: auto; } .frame, .preview { transition: none; } }
+  @media (max-width: 900px) {
+    .stage, .split, .two { grid-template-columns: 1fr; }
+    .steps { grid-template-columns: 1fr; }
+    .pipeline { grid-template-columns: 1fr; }
+    .pipe:not(:last-child)::after { right: auto; left: 50%; top: auto; bottom: -9px; transform: translateX(-50%) rotate(135deg); }
+    .facts { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 720px) {
+    body { padding-bottom: calc(var(--navh) + 8px); }
+    .bar { backdrop-filter: none; background: var(--paper); }
+    .bar .wrap { height: 54px; }
+    .code-link { display: none; }
+    .tabs { position: fixed; left: 0; right: 0; bottom: 0; height: var(--navh); z-index: 30; background: var(--surface); border-top: 1px solid var(--line); justify-content: space-around; gap: 0; padding: 6px 4px; }
+    .tab { flex-direction: column; gap: 2px; font-size: .72rem; padding: 6px 4px; border-radius: 12px; flex: 1; justify-content: center; }
+    .tab svg { width: 22px; height: 22px; }
     .prompt { flex-direction: column; align-items: stretch; padding: 14px; }
-    .go { width: 100%; }
+    .btn { width: 100%; }
+    .sentencebar { bottom: calc(var(--navh) + 8px); flex-wrap: wrap; }
+    .sentencebar .btn { width: auto; }
+    .toast { bottom: calc(var(--navh) + 84px); }
   }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <header class="top">
-    <a class="brand" href="#">
+<header class="bar">
+  <div class="wrap">
+    <a class="brand" href="#/create">
       <svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="14" fill="#3b5bff"/><ellipse cx="11.5" cy="10.5" rx="4.5" ry="3" fill="#fff" opacity=".75" transform="rotate(-30 11.5 10.5)"/></svg>
       SheepStealer
     </a>
-    <nav class="nav" aria-label="Page sections">
-      <a href="#library">Objects</a>
-      <a href="#words">Words</a>
-      <a href="#scene">Scene file</a>
-      <a href="https://github.com/SiddhishMaste/shepstealer">Code</a>
+    <nav class="tabs" aria-label="Pages" id="tabs">
+      <a class="tab" href="#/create" data-view="create"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 17l.8 2.2L22 20l-2.2.8L19 23l-.8-2.2L16 20l2.2-.8z"/></svg>Create</a>
+      <a class="tab" href="#/gallery" data-view="gallery"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>Gallery</a>
+      <a class="tab" href="#/guide" data-view="guide"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 21V5"/><path d="M9 8h6"/></svg>Guide</a>
+      <a class="tab" href="#/scene" data-view="scene"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 7l-5 5 5 5"/><path d="M16 7l5 5-5 5"/><path d="M14 4l-4 16"/></svg>Scene file</a>
+      <a class="tab" href="#/about" data-view="about"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v6"/><path d="M12 7.5v.01"/></svg>About</a>
     </nav>
-  </header>
+    <a class="code-link" href="https://github.com/SiddhishMaste/shepstealer">Code</a>
+  </div>
+</header>
 
-  <main>
-    <section class="compose">
-      <h1>Type a scene, get a ray&#8209;traced picture</h1>
-      <p class="lead">A C++ ray tracer draws every picture from simple shapes. Name some objects, pick colours and add a background.</p>
+<main class="wrap">
 
-      <form class="prompt" id="form">
-        <textarea id="prompt" rows="2" maxlength="300" aria-label="Describe your scene" placeholder="a blue toy car with pink trees in the background">a blue toy car with pink trees in the background</textarea>
-        <button class="go" id="go" type="submit">Render</button>
-      </form>
-      <p class="msg" id="msg" role="status"></p>
-      <div class="suggest" id="suggest"></div>
-      <div class="opts">
-        <label>Picture size
-          <select id="size">
-            <option value="480x270">Small</option>
-            <option value="640x360" selected>Medium</option>
-            <option value="960x540">Large</option>
-          </select></label>
-        <label>Quality
-          <select id="quality">
-            <option value="4">Draft</option>
-            <option value="12" selected>Normal</option>
-            <option value="24">High</option>
-          </select></label>
-      </div>
-    </section>
+  <!-- CREATE -->
+  <section class="view" id="view-create" data-title="Create">
+    <h1>Type a scene, get a ray&#8209;traced picture</h1>
+    <p class="lead">A C++ ray tracer draws every picture from simple shapes. Name some objects, pick colours and add a background.</p>
+    <form class="prompt" id="form">
+      <textarea id="prompt" rows="2" maxlength="300" aria-label="Describe your scene" placeholder="a blue toy car with pink trees in the background">a blue toy car with pink trees in the background</textarea>
+      <button class="btn" id="go" type="submit">Render</button>
+    </form>
+    <p class="msg" id="msg" role="status"></p>
+    <div class="scrollrow" id="suggest" aria-label="Example sentences"></div>
 
-    <section class="stage" aria-label="Result">
+    <div class="stage">
       <div>
         <div class="frame" id="frame">
           <img id="pic" src="/img/hero.jpg" alt="A blue toy car with pink trees behind it, drawn by the ray tracer">
@@ -171,50 +219,148 @@
         </div>
         <div class="history" id="history" aria-label="Earlier pictures"></div>
       </div>
-      <aside class="facts">
-        <h2>In this picture</h2>
+      <aside class="panel">
+        <h3>In this picture</h3>
         <ul id="understood"><li>blue toy car</li><li>3 pink trees (background)</li></ul>
         <div class="skipped" id="skipped" hidden></div>
         <p class="time" id="time">Sample picture made by the engine.</p>
+        <div class="settings">
+          <label>Size
+            <select class="sel-size"><option value="480x270">Small</option><option value="640x360" selected>Medium</option><option value="960x540">Large</option></select></label>
+          <label>Quality
+            <select class="sel-quality"><option value="4">Draft</option><option value="12" selected>Normal</option><option value="24">High</option></select></label>
+        </div>
         <div class="actions">
-          <a class="dl" id="dl" href="/img/hero.jpg" download="sheepstealer.jpg">Download picture</a>
-          <button class="ghost" id="editScene" type="button">Open scene file</button>
+          <a class="soft" id="dl" href="/img/hero.jpg" download="sheepstealer.jpg">Download picture</a>
+          <button class="soft" id="toScene" type="button">Edit the scene file</button>
         </div>
       </aside>
-    </section>
+    </div>
+  </section>
 
-    <section class="block" id="library">
-      <h2 class="title">Objects you can ask for</h2>
-      <p class="sub">Each one is built from boxes, cylinders, cones, spheres and squashed spheres. Click an object to add it to your sentence.</p>
-      <div class="grid" id="grid"></div>
-    </section>
+  <!-- GALLERY -->
+  <section class="view" id="view-gallery" data-title="Gallery" hidden>
+    <h2 class="title">Objects you can ask for</h2>
+    <p class="lead">Each one is built from boxes, cylinders, cones, spheres and squashed spheres. Click an object to add it to your sentence, then press Render.</p>
+    <div class="tools">
+      <input class="search" id="search" type="search" placeholder="Search objects" aria-label="Search objects">
+      <div class="row" id="groups" role="group" aria-label="Categories"></div>
+    </div>
+    <div class="grid" id="grid"></div>
+    <p class="empty" id="noMatch" hidden>No object has that name. Clear the search to see all of them.</p>
+    <div class="sentencebar" id="bar" hidden>
+      <p id="barText"></p>
+      <button class="plain" id="barClear" type="button">Clear</button>
+      <button class="btn" id="barGo" type="button">Render</button>
+    </div>
+  </section>
 
-    <section class="block" id="words">
-      <h2 class="title">Words it understands</h2>
-      <p class="sub">Put a colour before an object, a number before a plural, and say where things go. Click a word to add it where your cursor is.</p>
-      <div class="words">
-        <div><h3>Colours</h3><div class="swatches" id="colors"></div></div>
-        <div><h3>Scene</h3><div class="suggest" id="sceneWords"></div></div>
-      </div>
-    </section>
+  <!-- GUIDE -->
+  <section class="view" id="view-guide" data-title="Guide" hidden>
+    <h2 class="title">How to write a sentence</h2>
+    <p class="lead">Name the things you want, put a colour in front of each, then say where they stand and what is behind them. Press an example to render it.</p>
+    <div class="steps">
+      <div class="step"><h3>Pick objects</h3><p>Use the names from the gallery. Add a number for more than one.</p>
+        <button class="chip" data-try="a car and a tree">a car and a tree</button><button class="chip" data-try="5 penguins">5 penguins</button></div>
+      <div class="step"><h3>Add colours</h3><p>A colour goes right before the object it describes.</p>
+        <button class="chip" data-try="a red house and a blue car">a red house and a blue car</button><button class="chip" data-try="3 pink balloons">3 pink balloons</button></div>
+      <div class="step"><h3>Set the scene</h3><p>Say where things go, and add a background, ground or time of day.</p>
+        <button class="chip" data-try="a house with green trees in the background on a lavender background">trees in the background, lavender sky</button><button class="chip" data-try="a snowman and an igloo on snow at sunset">snow at sunset</button></div>
+    </div>
+    <h3>Colours (26)</h3>
+    <p class="lead" style="margin-bottom:12px">Click a colour to add it to your sentence.</p>
+    <div class="swatches" id="colors"></div>
+    <h3>Scene words</h3>
+    <p class="lead" style="margin-bottom:12px">Click a word to add it. They work anywhere in the sentence.</p>
+    <div class="row" id="sceneWords"></div>
+    <h3 style="margin-top:26px">Whole scenes in one word</h3>
+    <p class="lead" style="margin-bottom:12px">These words place several objects for you.</p>
+    <div class="row" id="groupWords"></div>
+    <div class="sentencebar" id="bar2" hidden>
+      <p id="barText2"></p>
+      <button class="btn" id="barGo2" type="button">Render</button>
+    </div>
+  </section>
 
-    <section class="block" id="scene">
-      <h2 class="title">The scene file</h2>
-      <p class="sub">Your sentence becomes this text, and the C++ engine reads it. You can also edit it by hand or start from an example, then render it.</p>
+  <!-- SCENE FILE -->
+  <section class="view" id="view-scene" data-title="Scene file" hidden>
+    <h2 class="title">The scene file</h2>
+    <p class="lead">Your sentence becomes this text, and the C++ engine reads it. Edit it by hand or start from an example, then render it.</p>
+    <div class="split">
       <div class="editor">
-        <div class="bar">
+        <div class="head">
           <label for="example">Start from</label>
           <select id="example"><option value="">Your last sentence</option></select>
+          <button class="btn" id="goScene" type="button" style="padding:9px 20px;margin-left:auto">Render scene</button>
         </div>
-        <textarea id="sceneText" spellcheck="false" aria-label="Scene file"></textarea>
-        <button class="go" id="goScene" type="button">Render scene file</button>
+        <div class="code"><pre id="gutter" aria-hidden="true">1</pre><textarea id="sceneText" spellcheck="false" wrap="off" aria-label="Scene file"></textarea></div>
         <p class="msg" id="sceneMsg" role="status"></p>
       </div>
-    </section>
+      <div>
+        <div class="preview" id="preview">
+          <img id="scenePic" src="/img/hero.jpg" alt="Picture made from the scene file">
+          <div class="busy" id="busy2"><p>Tracing rays</p></div>
+        </div>
+        <div class="settings" style="margin-top:14px">
+          <label>Size
+            <select class="sel-size"><option value="480x270">Small</option><option value="640x360" selected>Medium</option><option value="960x540">Large</option></select></label>
+          <label>Quality
+            <select class="sel-quality"><option value="4">Draft</option><option value="12" selected>Normal</option><option value="24">High</option></select></label>
+        </div>
+      </div>
+    </div>
+  </section>
 
-    <p class="foot">Built by Siddhish Maste, Tanmay Khatwar and Umang Dangi. The renderer is written in C++17. This page only sends text to the server and shows the picture that comes back.</p>
-  </main>
-</div>
+  <!-- ABOUT -->
+  <section class="view" id="view-about" data-title="About" hidden>
+    <h2 class="title">How it works</h2>
+    <p class="lead">SheepStealer Engine is a ray tracer: it follows rays of light from a camera through every pixel and works out what colour each one should be. Everything below runs on this server's processor, with no graphics card.</p>
+    <div class="pipeline">
+      <div class="pipe"><b>Your sentence</b><span>Typed on the Create page</span></div>
+      <div class="pipe"><b>Prompt reader</b><span>Python finds objects, colours and the background</span></div>
+      <div class="pipe"><b>Scene file</b><span>A text description of shapes, lights and a camera</span></div>
+      <div class="pipe"><b>Ray tracer</b><span>C++17, all CPU cores, BVH speed-up</span></div>
+      <div class="pipe"><b>Picture</b><span>A PNG with gamma correction</span></div>
+    </div>
+    <div class="facts">
+      <div class="fact"><b>39</b><span>objects to choose from</span></div>
+      <div class="fact"><b>26</b><span>colours, plus 3 times of day</span></div>
+      <div class="fact"><b>25</b><span>engine tests, all passing</span></div>
+      <div class="fact"><b>15</b><span>prompt reader tests, all passing</span></div>
+    </div>
+    <div class="two">
+      <div>
+        <h3>What the engine does</h3>
+        <ul class="plainlist">
+          <li>Spheres, planes, triangles, boxes, cylinders, cones and ellipsoids</li>
+          <li>Matte, mirror and glass materials, with reflection and refraction</li>
+          <li>Hard shadows, several lights, and depth of field</li>
+          <li>Anti-aliasing and multithreading, with identical output for any thread count</li>
+          <li>Scene files with line-numbered error messages and safety limits</li>
+        </ul>
+        <h3>Good to know</h3>
+        <ul class="plainlist">
+          <li>The prompt reader has a fixed vocabulary. It tells you which words it skipped.</li>
+          <li>The free server sleeps when nobody visits, so the first picture after a break can take about a minute.</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Team</h3>
+        <table>
+          <thead><tr><th>Name</th><th>Enrolment no.</th></tr></thead>
+          <tbody>
+            <tr><td>Siddhish Maste</td><td>25EGICS211</td></tr>
+            <tr><td>Tanmay Khatwar</td><td>25EGICS229</td></tr>
+            <tr><td>Umang Dangi</td><td>25EGICS234</td></tr>
+          </tbody>
+        </table>
+        <p style="margin-top:14px"><a href="https://github.com/SiddhishMaste/shepstealer">Source code on GitHub</a></p>
+      </div>
+    </div>
+  </section>
+
+</main>
+<div class="toast" id="toast" role="status" hidden></div>
 
 <script>
 const $ = (id) => document.getElementById(id);
@@ -225,49 +371,73 @@ const SUGGESTIONS = [
   "a red house, a lighthouse and a forest at sunset",
   "a pink donut, a blue cupcake and a yellow duck on a purple background",
 ];
-const SCENE_WORDS = ["in the background", "on the left", "on the right", "2", "3", "5",
-  "day", "sunset", "night", "on grass", "on snow", "on sand", "on the road", "on the sea"];
-let examples = [], history = [], lastScene = "", busy = false;
+const SCENE_WORDS = ["in the background", "on the left", "on the right", "2", "3", "5", "day", "sunset", "night",
+  "on grass", "on snow", "on sand", "on the road", "on the sea", "yellow background", "purple background"];
+const GROUP_WORDS = ["a forest", "a village", "a town", "a garden", "a party", "camping", "a farm", "winterland", "a kitchen", "a playground"];
+const VIEWS = ["create", "gallery", "guide", "scene", "about"];
+let examples = [], history = [], lastScene = "", busy = false, objects = [], group = "All";
 
-function size() { const [w, h] = $("size").value.split("x").map(Number); return { width: w, height: h, spp: Number($("quality").value) }; }
+/* ---------- small helpers ---------- */
+function toast(text) {
+  const t = $("toast"); t.textContent = text; t.hidden = false;
+  clearTimeout(toast.id); toast.id = setTimeout(() => { t.hidden = true; }, 2600);
+}
 function say(text, isError) { $("msg").textContent = text || ""; $("msg").className = "msg" + (isError ? " err" : ""); }
+function settings() {
+  const [w, h] = document.querySelector(".sel-size").value.split("x").map(Number);
+  return { width: w, height: h, spp: Number(document.querySelector(".sel-quality").value) };
+}
+for (const cls of ["sel-size", "sel-quality"]) {
+  document.querySelectorAll("." + cls).forEach(sel => sel.addEventListener("change", () => {
+    document.querySelectorAll("." + cls).forEach(o => { o.value = sel.value; });
+    try { localStorage.setItem("sheep-" + cls, sel.value); } catch (e) {}
+  }));
+  try { const v = localStorage.getItem("sheep-" + cls); if (v) document.querySelectorAll("." + cls).forEach(o => { o.value = v; }); } catch (e) {}
+}
+async function asJson(res) { try { return await res.json(); } catch (e) { return {}; } }
 function setBusy(on, text) {
   busy = on;
-  $("busy").classList.toggle("on", on);
+  $("busy").classList.toggle("on", on); $("busy2").classList.toggle("on", on);
   if (text) $("busyText").textContent = text;
-  for (const id of ["go", "goScene", "editScene"]) $(id).disabled = on;
+  for (const id of ["go", "goScene", "toScene", "barGo", "barGo2"]) $(id).disabled = on;
 }
-try { const saved = JSON.parse(localStorage.getItem("sheep") || "{}"); if (saved.size) $("size").value = saved.size; if (saved.quality) $("quality").value = saved.quality; } catch (e) {}
-function remember() { try { localStorage.setItem("sheep", JSON.stringify({ size: $("size").value, quality: $("quality").value })); } catch (e) {} }
-$("size").addEventListener("change", remember); $("quality").addEventListener("change", remember);
-
-async function asJson(res) { try { return await res.json(); } catch (e) { return {}; } }
-
 function tintFrom(img) {
   try {
     const c = document.createElement("canvas"); c.width = 16; c.height = 9;
     const g = c.getContext("2d"); g.drawImage(img, 0, 0, 16, 9);
-    const row = g.getImageData(0, 0, 16, 2).data; let r = 0, gr = 0, b = 0, n = 0;
-    for (let i = 0; i < row.length; i += 4) { r += row[i]; gr += row[i + 1]; b += row[i + 2]; n++; }
+    const d = g.getImageData(0, 0, 16, 2).data; let r = 0, gr = 0, b = 0, n = 0;
+    for (let i = 0; i < d.length; i += 4) { r += d[i]; gr += d[i + 1]; b += d[i + 2]; n++; }
     document.documentElement.style.setProperty("--tint", [r, gr, b].map(v => Math.round(v / n * 0.85 + 255 * 0.15)).join(", "));
   } catch (e) {}
 }
-$("pic").addEventListener("load", () => tintFrom($("pic")));
+for (const id of ["pic", "scenePic"]) { $(id).addEventListener("load", () => tintFrom($(id))); }
 if ($("pic").complete) tintFrom($("pic"));
 
+/* ---------- pages ---------- */
+function route() {
+  const name = (location.hash.replace(/^#\/?/, "") || "create");
+  const view = VIEWS.includes(name) ? name : "create";
+  VIEWS.forEach(v => { $("view-" + v).hidden = v !== view; });
+  document.querySelectorAll(".tab").forEach(t => { if (t.dataset.view === view) t.setAttribute("aria-current", "page"); else t.removeAttribute("aria-current"); });
+  document.title = $("view-" + view).dataset.title + " · SheepStealer Engine";
+  if (view === "scene") numberLines();
+  updateBars();
+  window.scrollTo({ top: 0 });
+}
+window.addEventListener("hashchange", route);
+function go(view) { if (location.hash === "#/" + view) route(); else location.hash = "#/" + view; }
+
+/* ---------- facts panel and history ---------- */
 function showFacts(understood, ignored, notes, seconds) {
   const list = $("understood"); list.innerHTML = "";
   const [objs, extra] = (understood || "").split(" | ");
-  (objs || "").split(", ").filter(Boolean).forEach(t => { const li = document.createElement("li"); li.textContent = t; list.appendChild(li); });
-  (extra || "").split(", ").filter(Boolean).forEach(t => { const li = document.createElement("li"); li.textContent = t; list.appendChild(li); });
-  const sk = $("skipped");
+  [objs, extra].forEach(part => (part || "").split(", ").filter(Boolean).forEach(t => { const li = document.createElement("li"); li.textContent = t; list.appendChild(li); }));
   const bits = [];
   if (ignored && ignored.length) bits.push("Skipped words it does not know: " + ignored.join(", ") + ".");
   (notes || []).forEach(n => bits.push(n));
-  sk.hidden = bits.length === 0; sk.textContent = bits.join(" ");
+  $("skipped").hidden = bits.length === 0; $("skipped").textContent = bits.join(" ");
   $("time").textContent = seconds ? "Rendered in " + seconds + " s." : "";
 }
-
 function addHistory(entry) {
   history.unshift(entry); history = history.slice(0, 8);
   const box = $("history"); box.innerHTML = "";
@@ -281,112 +451,159 @@ function addHistory(entry) {
 }
 function show(h) {
   $("pic").src = h.url; $("pic").alt = h.prompt || "Rendered picture";
-  $("dl").href = h.url; $("dl").download = "sheepstealer.png"; $("dl").hidden = false;
-  if (h.prompt) $("prompt").value = h.prompt;
-  if (h.scene) { $("sceneText").value = h.scene; lastScene = h.scene; }
+  $("scenePic").src = h.url;
+  $("dl").href = h.url; $("dl").download = "sheepstealer.png";
+  if (h.fromPrompt) $("prompt").value = h.prompt;
+  if (h.scene) { $("sceneText").value = h.scene; lastScene = h.fromPrompt ? h.scene : lastScene; numberLines(); }
   showFacts(h.understood, h.ignored, h.notes, h.seconds);
 }
 
-async function renderScene(scene, label) {
+/* ---------- talking to the server ---------- */
+async function renderScene(scene) {
   setBusy(true, "Tracing rays");
   const started = performance.now();
-  const res = await fetch("/api/render", { method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(Object.assign({ scene }, size())) });
+  const res = await fetch("/api/render", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(Object.assign({ scene }, settings())) });
   if (!res.ok) { const j = await asJson(res); throw new Error(j.error || "The render failed (" + res.status + ")."); }
   const seconds = res.headers.get("X-Render-Seconds") || ((performance.now() - started) / 1000).toFixed(1);
   return { url: URL.createObjectURL(await res.blob()), seconds };
 }
-
 async function generate(text) {
   if (busy) return;
   text = (text || "").trim();
+  go("create");
   if (!text) { say("Type what you want to see, for example: a blue car with pink trees.", true); return; }
-  say(""); setBusy(true, "Reading your sentence");
+  $("prompt").value = text; say(""); setBusy(true, "Reading your sentence");
   try {
-    const res = await fetch("/api/compose", { method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(Object.assign({ prompt: text }, size())) });
+    const res = await fetch("/api/compose", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(Object.assign({ prompt: text }, settings())) });
     const data = await asJson(res);
     if (!res.ok) throw new Error(data.error || "Something went wrong (" + res.status + ").");
     const out = await renderScene(data.scene);
-    const entry = { url: out.url, prompt: text, scene: data.scene, understood: data.understood, ignored: data.ignored, notes: data.notes, seconds: out.seconds };
+    const entry = { url: out.url, prompt: text, scene: data.scene, understood: data.understood, ignored: data.ignored, notes: data.notes, seconds: out.seconds, fromPrompt: true };
     show(entry); addHistory(entry);
-    say("");
     $("frame").scrollIntoView({ behavior: "smooth", block: "nearest" });
-  } catch (e) {
-    say(e.message || "Could not reach the server. Check your connection and try again.", true);
-  } finally { setBusy(false); }
+  } catch (e) { say(e.message || "Could not reach the server. Check your connection and try again.", true); }
+  finally { setBusy(false); }
 }
-
 async function renderEditor() {
   if (busy) return;
   const scene = $("sceneText").value;
-  $("sceneMsg").textContent = ""; $("sceneMsg").className = "msg";
+  $("sceneMsg").className = "msg"; $("sceneMsg").textContent = "";
+  markError(0);
   if (!scene.trim()) { $("sceneMsg").textContent = "The scene file is empty. Pick an example or write a scene."; $("sceneMsg").className = "msg err"; return; }
   try {
     const out = await renderScene(scene);
     const entry = { url: out.url, prompt: "Scene file", scene, understood: "scene file you edited", seconds: out.seconds };
-    $("pic").src = out.url; $("dl").href = out.url; $("dl").download = "sheepstealer.png"; $("dl").hidden = false;
-    showFacts(entry.understood, [], [], out.seconds); addHistory(entry);
+    show(entry); addHistory(entry);
     $("sceneMsg").textContent = "Rendered in " + out.seconds + " s.";
-    $("frame").scrollIntoView({ behavior: "smooth", block: "center" });
   } catch (e) {
     $("sceneMsg").textContent = e.message; $("sceneMsg").className = "msg err";
+    const m = /scene\.txt:(\d+)/.exec(e.message); if (m) markError(Number(m[1]));
   } finally { setBusy(false); }
 }
 
+/* ---------- scene editor: line numbers and error line ---------- */
+let errLine = 0;
+function numberLines() {
+  const n = Math.max(1, $("sceneText").value.split("\n").length);
+  let s = ""; for (let i = 1; i <= n; i++) s += (i === errLine ? "▶" : i) + "\n";
+  $("gutter").textContent = s;
+  $("gutter").scrollTop = $("sceneText").scrollTop;
+}
+function markError(line) { errLine = line; numberLines(); if (line) { const t = $("sceneText"); t.scrollTop = Math.max(0, (line - 4) * 19.5); $("gutter").scrollTop = t.scrollTop; } }
+$("sceneText").addEventListener("input", () => { errLine = 0; numberLines(); });
+$("sceneText").addEventListener("scroll", () => { $("gutter").scrollTop = $("sceneText").scrollTop; });
+
+/* ---------- the sentence ---------- */
 function insertWord(word) {
   const t = $("prompt"); const a = t.selectionStart ?? t.value.length, b = t.selectionEnd ?? a;
   const before = t.value.slice(0, a), after = t.value.slice(b);
   const pre = before && !/\s$/.test(before) ? " " : "", post = after && !/^\s/.test(after) ? " " : "";
   t.value = before + pre + word + post + after;
-  const pos = (before + pre + word + post).length; t.focus(); t.setSelectionRange(pos, pos);
+  updateBars();
 }
-function addObject(title, key) {
-  const t = $("prompt").value.trim();
-  $("prompt").value = t ? t.replace(/[.,]+$/, "") + " and a " + title.toLowerCase() : "a " + title.toLowerCase();
-  say("Added " + title.toLowerCase() + ". Press Render when you are ready.");
+function appendWord(word) { const t = $("prompt"); t.value = (t.value.trim() ? t.value.trim() + " " : "") + word; updateBars(); }
+function updateBars() {
+  const text = $("prompt").value.trim();
+  for (const [bar, label] of [["bar", "barText"], ["bar2", "barText2"]]) {
+    $(bar).hidden = !text; $(label).textContent = text;
+  }
+}
+function addObject(title) {
+  const t = $("prompt").value.trim().replace(/[.,]+$/, "");
+  const word = "a " + title.toLowerCase();
+  $("prompt").value = t ? t + " and " + word : word;
+  updateBars(); toast("Added " + title.toLowerCase());
 }
 
+/* ---------- gallery ---------- */
+function drawGallery() {
+  const q = $("search").value.trim().toLowerCase();
+  const sentence = $("prompt").value.toLowerCase();
+  let shown = 0;
+  document.querySelectorAll("#grid .card").forEach(card => {
+    const ok = (group === "All" || card.dataset.group === group) && (!q || card.dataset.title.toLowerCase().includes(q) || card.dataset.key.includes(q));
+    card.hidden = !ok; if (ok) shown++;
+    const n = (sentence.match(new RegExp("\\b" + card.dataset.title.toLowerCase().replace(/[^a-z ]/g, "") + "s?\\b", "g")) || []).length;
+    let badge = card.querySelector("b");
+    if (n) { if (!badge) { badge = document.createElement("b"); card.appendChild(badge); } badge.textContent = "x" + n; } else if (badge) badge.remove();
+  });
+  $("noMatch").hidden = shown > 0;
+  document.querySelectorAll("#groups .chip").forEach(c => c.setAttribute("aria-pressed", c.dataset.g === group ? "true" : "false"));
+}
+
+/* ---------- wiring ---------- */
 $("form").addEventListener("submit", (e) => { e.preventDefault(); generate($("prompt").value); });
 $("prompt").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); generate($("prompt").value); } });
+$("prompt").addEventListener("input", () => { updateBars(); });
 $("goScene").addEventListener("click", renderEditor);
-$("editScene").addEventListener("click", () => { $("scene").scrollIntoView({ behavior: "smooth" }); });
-$("example").addEventListener("change", () => {
-  const i = $("example").value; $("sceneText").value = i === "" ? lastScene : examples[Number(i)].scene;
-});
+$("toScene").addEventListener("click", () => go("scene"));
+$("barGo").addEventListener("click", () => generate($("prompt").value));
+$("barGo2").addEventListener("click", () => generate($("prompt").value));
+$("barClear").addEventListener("click", () => { $("prompt").value = ""; updateBars(); drawGallery(); });
+$("search").addEventListener("input", drawGallery);
+$("example").addEventListener("change", () => { const i = $("example").value; $("sceneText").value = i === "" ? lastScene : examples[Number(i)].scene; errLine = 0; numberLines(); });
+document.querySelectorAll("[data-try]").forEach(b => b.addEventListener("click", () => generate(b.dataset.try)));
 
 SUGGESTIONS.forEach(s => {
   const b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.textContent = s;
-  b.addEventListener("click", () => { $("prompt").value = s; generate(s); });
-  $("suggest").appendChild(b);
+  b.addEventListener("click", () => generate(s)); $("suggest").appendChild(b);
 });
 SCENE_WORDS.forEach(w => {
   const b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.textContent = w;
-  b.addEventListener("click", () => insertWord(w));
-  $("sceneWords").appendChild(b);
+  b.addEventListener("click", () => { appendWord(w); toast("Added \"" + w + "\""); }); $("sceneWords").appendChild(b);
+});
+GROUP_WORDS.forEach(w => {
+  const b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.textContent = w;
+  b.addEventListener("click", () => generate(w)); $("groupWords").appendChild(b);
 });
 
 async function boot() {
+  route();
   try {
     const [o, ex, hero] = await Promise.all([fetch("/api/objects"), fetch("/api/examples"), fetch("/img/hero.txt")]);
-    const od = await o.json();
-    od.objects.forEach(obj => {
-      const b = document.createElement("button"); b.type = "button"; b.className = "card";
+    const od = await o.json(); objects = od.objects;
+    const groups = ["All", ...new Set(objects.map(x => x.group))];
+    groups.forEach(g => {
+      const b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.dataset.g = g; b.textContent = g;
+      b.addEventListener("click", () => { group = g; drawGallery(); }); $("groups").appendChild(b);
+    });
+    objects.forEach(obj => {
+      const b = document.createElement("button"); b.type = "button"; b.className = "card"; b.dataset.key = obj.key; b.dataset.title = obj.title; b.dataset.group = obj.group;
       b.innerHTML = '<img loading="lazy" alt="" src="/img/obj/' + obj.key + '.jpg"><span></span>';
       b.querySelector("span").textContent = obj.title;
-      b.addEventListener("click", () => { addObject(obj.title, obj.key); b.classList.add("added"); });
+      b.addEventListener("click", () => { addObject(obj.title); drawGallery(); });
       $("grid").appendChild(b);
     });
     Object.keys(od.colors).forEach(name => {
       const rgb = od.colors[name].map(v => Math.round(Math.min(1, v) * 255));
       const b = document.createElement("button"); b.type = "button"; b.className = "swatch";
       b.innerHTML = '<i style="background:rgb(' + rgb.join(",") + ')"></i><span></span>'; b.querySelector("span").textContent = name;
-      b.addEventListener("click", () => insertWord(name));
-      $("colors").appendChild(b);
+      b.addEventListener("click", () => { appendWord(name); toast("Added " + name); }); $("colors").appendChild(b);
     });
     examples = await ex.json();
     examples.forEach((e, i) => { const op = document.createElement("option"); op.value = i; op.textContent = e.name; $("example").appendChild(op); });
-    if (hero.ok) { lastScene = await hero.text(); $("sceneText").value = lastScene; }
+    if (hero.ok) { lastScene = await hero.text(); $("sceneText").value = lastScene; numberLines(); }
+    drawGallery(); updateBars();
   } catch (e) { say("Could not load the object list. Reload the page.", true); }
 }
 boot();
