@@ -1,4 +1,5 @@
 #pragma once
+#include <algorithm>
 #include <cmath>
 #include <cstdlib>
 #include <fstream>
@@ -151,6 +152,7 @@ inline const std::map<std::string, int>& optionSizes() {
         {"center", 3}, {"radius", 1}, {"point", 3}, {"normal", 3},
         {"v0", 3}, {"v1", 3}, {"v2", 3}, {"position", 3}, {"intensity", 1},
         {"material", 1}, {"file", 1}, {"offset", 3},
+        {"min", 3}, {"max", 3}, {"from", 3}, {"to", 3}, {"segments", 1}, {"turn", 1}, {"radii", 3}, {"half", 1},
     };
     return sizes;
 }
@@ -218,6 +220,85 @@ inline void loadObj(const std::string& file, const std::string& dir, double scal
             }
         }
     }
+}
+
+// ---------------------------------------------------------------------------
+// Solid shapes made of triangles: box, cylinder and cone (REQ-GEO-08).
+// Each builder hands its triangles to "emit", which adds them to the scene.
+// ---------------------------------------------------------------------------
+template <class Emit>
+void buildBox(const Vec3& lo, const Vec3& hi, Emit emit) {
+    Vec3 c[8] = {
+        Vec3(lo.x, lo.y, lo.z), Vec3(hi.x, lo.y, lo.z), Vec3(hi.x, hi.y, lo.z), Vec3(lo.x, hi.y, lo.z),
+        Vec3(lo.x, lo.y, hi.z), Vec3(hi.x, lo.y, hi.z), Vec3(hi.x, hi.y, hi.z), Vec3(lo.x, hi.y, hi.z)};
+    const int f[6][4] = {{0, 1, 2, 3}, {4, 5, 6, 7}, {0, 1, 5, 4}, {3, 2, 6, 7}, {0, 3, 7, 4}, {1, 2, 6, 5}};
+    for (const auto& q : f) {
+        emit(c[q[0]], c[q[1]], c[q[2]]);
+        emit(c[q[0]], c[q[2]], c[q[3]]);
+    }
+}
+
+// A circle of "n" points around the axis from "a" to "b", with the given radius.
+inline std::vector<Vec3> ringPoints(const Vec3& center, const Vec3& axis, double radius, int n, double turnDeg) {
+    Vec3 w = axis.normalize();
+    Vec3 helper = std::fabs(w.y) < 0.9 ? Vec3(0, 1, 0) : Vec3(1, 0, 0);
+    Vec3 u = w.cross(helper).normalize();
+    Vec3 v = w.cross(u);
+    std::vector<Vec3> pts;
+    for (int k = 0; k < n; k++) {
+        double ang = turnDeg * 3.14159265358979323846 / 180.0 + 2.0 * 3.14159265358979323846 * k / n;
+        pts.push_back(center + u * (radius * std::cos(ang)) + v * (radius * std::sin(ang)));
+    }
+    return pts;
+}
+
+template <class Emit>
+void buildCylinder(const Vec3& from, const Vec3& to, double radius, int n, double turn, Emit emit) {
+    Vec3 axis = to - from;
+    std::vector<Vec3> a = ringPoints(from, axis, radius, n, turn);
+    std::vector<Vec3> b = ringPoints(to, axis, radius, n, turn);
+    for (int k = 0; k < n; k++) {
+        int m = (k + 1) % n;
+        emit(a[k], a[m], b[m]);          // side
+        emit(a[k], b[m], b[k]);
+        emit(from, a[m], a[k]);          // bottom cap
+        emit(to, b[k], b[m]);            // top cap
+    }
+}
+
+template <class Emit>
+void buildCone(const Vec3& from, const Vec3& apex, double radius, int n, double turn, Emit emit) {
+    std::vector<Vec3> a = ringPoints(from, apex - from, radius, n, turn);
+    for (int k = 0; k < n; k++) {
+        int m = (k + 1) % n;
+        emit(a[k], a[m], apex);          // side
+        emit(from, a[m], a[k]);          // base cap
+    }
+}
+
+// An ellipsoid (a sphere stretched by "radii"). With half = true only the upper
+// half is built, plus a flat bottom disc, which makes a dome.
+template <class Emit>
+void buildEllipsoid(const Vec3& c, const Vec3& r, int n, bool half, Emit emit) {
+    const double PI = 3.14159265358979323846;
+    int bands = std::max(4, n / 2);
+    if (half) bands = std::max(2, bands / 2);
+    double maxTheta = half ? PI / 2 : PI;
+    auto point = [&](int band, int k) {
+        double th = maxTheta * band / bands;
+        double ph = 2.0 * PI * k / n;
+        return Vec3(c.x + r.x * std::sin(th) * std::cos(ph), c.y + r.y * std::cos(th), c.z + r.z * std::sin(th) * std::sin(ph));
+    };
+    for (int b = 0; b < bands; b++) {
+        for (int k = 0; k < n; k++) {
+            int m = (k + 1) % n;
+            Vec3 a0 = point(b, k), a1 = point(b, m), b0 = point(b + 1, k), b1 = point(b + 1, m);
+            if (b > 0) emit(a0, b1, a1);                    // skip the empty triangle at the top pole
+            if (half || b + 1 < bands) emit(a0, b0, b1);     // skip the empty triangle at the bottom pole
+        }
+    }
+    if (half)
+        for (int k = 0; k < n; k++) emit(c, point(bands, (k + 1) % n), point(bands, k));   // flat bottom
 }
 
 inline Scene loadScene(const std::string& path) {
@@ -351,6 +432,46 @@ inline Scene loadScene(const std::string& path) {
             Args a = parseArgs(tok, 1, where);
             a.allow({"v0", "v1", "v2", "material"});
             addPrim(a, std::make_shared<Triangle>(a.reqVec("v0"), a.reqVec("v1"), a.reqVec("v2"), findMat(a)));
+
+        } else if (cmd == "box") {
+            Args a = parseArgs(tok, 1, where);
+            a.allow({"min", "max", "material"});
+            Vec3 lo = a.reqVec("min"), hi = a.reqVec("max");
+            a.need(hi.x > lo.x && hi.y > lo.y && hi.z > lo.z, "box: every 'max' value must be greater than the matching 'min' value");
+            const Material& bm = findMat(a);
+            buildBox(lo, hi, [&](const Vec3& p, const Vec3& q, const Vec3& r) {
+                addPrim(a, std::make_shared<Triangle>(p, q, r, bm));
+            });
+
+        } else if (cmd == "cylinder" || cmd == "cone") {
+            Args a = parseArgs(tok, 1, where);
+            a.allow({"from", "to", "radius", "segments", "turn", "material"});
+            Vec3 p0 = a.reqVec("from"), p1 = a.reqVec("to");
+            double r = a.req("radius");
+            int n = int(a.num("segments", 32));
+            double turn = a.num("turn", 0);
+            a.need(r > 0, cmd + ": radius must be greater than 0 (got " + fmt(r) + ")");
+            a.need((p1 - p0).length() > 1e-9, cmd + ": 'from' and 'to' must be different points");
+            a.need(n >= 3 && n <= 64, cmd + ": segments must be between 3 and 64 (got " + std::to_string(n) + ")");
+            const Material& sm = findMat(a);
+            auto emit = [&](const Vec3& p, const Vec3& q, const Vec3& s) {
+                addPrim(a, std::make_shared<Triangle>(p, q, s, sm));
+            };
+            if (cmd == "cylinder") buildCylinder(p0, p1, r, n, turn, emit);
+            else                   buildCone(p0, p1, r, n, turn, emit);
+
+        } else if (cmd == "ellipsoid") {
+            Args a = parseArgs(tok, 1, where);
+            a.allow({"center", "radii", "segments", "half", "material"});
+            Vec3 rr = a.reqVec("radii");
+            int n = int(a.num("segments", 36));
+            bool half = a.num("half", 0) != 0;
+            a.need(rr.x > 0 && rr.y > 0 && rr.z > 0, "ellipsoid: every radius must be greater than 0");
+            a.need(n >= 6 && n <= 64, "ellipsoid: segments must be between 6 and 64 (got " + std::to_string(n) + ")");
+            const Material& em = findMat(a);
+            buildEllipsoid(a.reqVec("center"), rr, n, half, [&](const Vec3& p, const Vec3& q, const Vec3& s) {
+                addPrim(a, std::make_shared<Triangle>(p, q, s, em));
+            });
 
         } else if (cmd == "obj") {
             Args a = parseArgs(tok, 1, where);

@@ -1,0 +1,635 @@
+"""Builds SheepStealer scene files from object recipes.
+
+Every object (car, tree, ice cream, ...) is a small recipe that puts simple shapes
+together: sphere, box, cylinder, cone and ellipsoid. compose() places the objects
+in a row, adds a floor, a background colour, lights and a camera, and returns the
+scene file text that the C++ engine renders.
+"""
+
+# ---------------------------------------------------------------- colours
+COLORS = {
+    "red": (0.85, 0.12, 0.10), "orange": (1.0, 0.52, 0.10), "yellow": (1.0, 0.85, 0.15),
+    "green": (0.18, 0.62, 0.25), "lime": (0.60, 0.85, 0.20), "mint": (0.60, 0.93, 0.74),
+    "teal": (0.10, 0.58, 0.58), "cyan": (0.20, 0.80, 0.90), "turquoise": (0.25, 0.80, 0.75),
+    "blue": (0.10, 0.30, 0.92), "navy": (0.08, 0.12, 0.42), "purple": (0.55, 0.20, 0.75),
+    "violet": (0.60, 0.35, 0.85), "lavender": (0.75, 0.65, 0.95), "pink": (1.0, 0.45, 0.72),
+    "magenta": (0.90, 0.15, 0.60), "maroon": (0.50, 0.08, 0.15), "brown": (0.45, 0.27, 0.13),
+    "beige": (0.90, 0.80, 0.62), "peach": (1.0, 0.75, 0.60), "cream": (0.97, 0.93, 0.80),
+    "white": (0.95, 0.95, 0.95), "grey": (0.55, 0.55, 0.58), "silver": (0.80, 0.82, 0.85),
+    "black": (0.08, 0.08, 0.09), "gold": (0.95, 0.75, 0.20),
+}
+COLOR_ALIASES = {"gray": "grey", "golden": "gold", "rose": "pink", "violet": "violet",
+                 "aqua": "cyan", "tan": "beige", "indigo": "navy", "scarlet": "red",
+                 "crimson": "red", "dark": None, "light": None}
+
+
+def mix(a, b, t):
+    return tuple(a[i] * (1 - t) + b[i] * t for i in range(3))
+
+
+def lighter(c, t=0.4):
+    return mix(c, (1, 1, 1), t)
+
+
+def darker(c, f=0.6):
+    return tuple(v * f for v in c)
+
+
+def num(v):
+    s = ("%.3f" % v).rstrip("0").rstrip(".")
+    return "0" if s in ("-0", "") else s
+
+
+def vec(v):
+    return " ".join(num(c) for c in v)
+
+
+# ---------------------------------------------------------------- scene writer
+class SceneWriter:
+    def __init__(self):
+        self.mats = {}
+        self.mat_lines = []
+        self.shape_lines = []
+
+    def material(self, color, spec=0.25, shin=32, kind="matte", ior=None):
+        c = tuple(round(max(0.0, min(1.5, v)), 2) for v in color)
+        key = (c, round(spec, 2), round(shin), kind, ior)
+        if key not in self.mats:
+            name = "m%d" % len(self.mats)
+            self.mats[key] = name
+            extra = (" ior %s" % num(ior)) if ior else ""
+            self.mat_lines.append("material %s %s color %s specular %s shininess %s%s"
+                                  % (name, kind, vec(c), num(spec), num(shin), extra))
+        return self.mats[key]
+
+
+class Pen:
+    """Draws one object. Coordinates are local: the object stands on y = 0 and
+    is moved to (ox, 0, oz) and scaled by s."""
+
+    def __init__(self, sw, ox, oz, s):
+        self.sw, self.ox, self.oz, self.s = sw, ox, oz, s
+
+    def P(self, p):
+        return (self.ox + p[0] * self.s, p[1] * self.s, self.oz + p[2] * self.s)
+
+    def m(self, color, spec=0.25, shin=32, kind="matte", ior=None):
+        return self.sw.material(color, spec, shin, kind, ior)
+
+    def sphere(self, c, r, mat):
+        self.sw.shape_lines.append("sphere center %s radius %s material %s" % (vec(self.P(c)), num(r * self.s), mat))
+
+    def box(self, lo, hi, mat):
+        self.sw.shape_lines.append("box min %s max %s material %s" % (vec(self.P(lo)), vec(self.P(hi)), mat))
+
+    def cyl(self, a, b, r, mat, seg=28):
+        self.sw.shape_lines.append("cylinder from %s to %s radius %s segments %d material %s"
+                                   % (vec(self.P(a)), vec(self.P(b)), num(r * self.s), seg, mat))
+
+    def cone(self, a, b, r, mat, seg=28, turn=0):
+        t = (" turn %s" % num(turn)) if turn else ""
+        self.sw.shape_lines.append("cone from %s to %s radius %s segments %d%s material %s"
+                                   % (vec(self.P(a)), vec(self.P(b)), num(r * self.s), seg, t, mat))
+
+    def ell(self, c, radii, mat, half=False, seg=36):
+        h = " half 1" if half else ""
+        self.sw.shape_lines.append("ellipsoid center %s radii %s segments %d%s material %s"
+                                   % (vec(self.P(c)), vec(tuple(v * self.s for v in radii)), seg, h, mat))
+
+
+# ---------------------------------------------------------------- object recipes
+OBJECTS = {}
+
+
+def obj(key, title, names, width, height, default):
+    def wrap(fn):
+        OBJECTS[key] = dict(key=key, title=title, names=names, width=width, height=height,
+                            default=default, fn=fn)
+        return fn
+    return wrap
+
+
+BLACK = (0.07, 0.07, 0.08)
+WHITE = (0.95, 0.95, 0.95)
+WOOD = (0.50, 0.32, 0.16)
+
+
+@obj("car", "Toy car", ["car", "toycar", "automobile", "vehicle"], 3.6, 1.6, "blue")
+def car(p, col):
+    col = col or COLORS["blue"]
+    body, cabin = p.m(col, .6, 90), p.m(lighter(col, .35), .5, 80)
+    tire, hub, lamp = p.m(BLACK, .1), p.m((.85, .85, .9), .5, 60), p.m((1, .9, .4), .8, 100)
+    p.box((-1.6, .35, -.8), (1.6, .95, .8), body)
+    p.box((-.8, .95, -.68), (.7, 1.5, .68), cabin)
+    for x in (-1.0, 1.0):
+        for sg in (-1, 1):
+            p.cyl((x, .38, sg * .7), (x, .38, sg * .98), .38, tire)
+            p.cyl((x, .38, sg * .96), (x, .38, sg * 1.0), .2, hub)
+    for z in (-.5, .5):
+        p.sphere((1.6, .68, z), .14, lamp)
+
+
+@obj("teddy", "Teddy bear", ["teddy", "bear", "teddybear", "plushie"], 2.8, 3.7, "brown")
+def teddy(p, col):
+    col = col or (.55, .34, .18)
+    fur, belly, dark = p.m(col, .08, 16), p.m(lighter(col, .5), .08, 16), p.m(BLACK, .7, 80)
+    p.sphere((0, 1.25, 0), 1.0, fur); p.sphere((0, 1.1, .45), .72, belly)
+    p.sphere((0, 2.75, .1), .8, fur)
+    for sx in (-1, 1):
+        p.sphere((sx * .62, 3.4, 0), .28, fur); p.sphere((sx * .62, 3.4, .18), .17, belly)
+        p.sphere((sx * .28, 2.95, .77), .09, dark)
+        p.sphere((sx * 1.0, 1.5, .25), .38, fur)
+        p.sphere((sx * .6, .42, .55), .45, fur); p.sphere((sx * .6, .45, .97), .2, belly)
+    p.sphere((0, 2.55, .8), .33, belly); p.sphere((0, 2.72, 1.1), .11, dark)
+
+
+@obj("icecream", "Ice cream", ["icecream", "icecreamcone", "cone", "gelato"], 1.7, 4.4, "pink")
+def icecream(p, col):
+    waffle = p.m((.85, .6, .3), .1, 16)
+    p.cone((0, 1.9, 0), (0, 0, 0), .66, waffle)
+    cols = [col, lighter(col, .45), darker(col, .75)] if col else [(1, .55, .7), (.98, .93, .8), (.42, .24, .14)]
+    p.sphere((0, 2.3, 0), .74, p.m(cols[0], .5, 60))
+    p.sphere((0, 3.0, 0), .66, p.m(cols[1], .5, 60))
+    p.sphere((0, 3.62, 0), .58, p.m(cols[2], .5, 60))
+    p.sphere((0, 4.15, 0), .17, p.m((.85, .08, .1), .9, 120))
+
+
+@obj("tree", "Tree", ["tree", "bush"], 3.0, 3.7, "green")
+def tree(p, col):
+    col = col or COLORS["green"]
+    trunk, leaf = p.m((.42, .26, .14), .05), p.m(col, .15, 24)
+    leaf2 = p.m(lighter(col, .2), .15, 24)
+    p.cyl((0, 0, 0), (0, 1.7, 0), .24, trunk)
+    p.sphere((0, 2.4, 0), 1.1, leaf); p.sphere((-.75, 2.0, .2), .72, leaf2)
+    p.sphere((.75, 2.05, .1), .72, leaf2); p.sphere((0, 3.05, 0), .72, leaf2)
+
+
+@obj("house", "House", ["house", "home", "cottage", "hut"], 3.4, 3.4, "cream")
+def house(p, col):
+    col = col or COLORS["cream"]
+    wall, roof = p.m(col, .1, 20), p.m((.62, .18, .14), .1, 20)
+    door, win = p.m((.4, .24, .12), .1), p.m((.55, .78, .95), .8, 100)
+    p.box((-1.4, 0, -1.4), (1.4, 1.6, 1.4), wall)
+    p.cone((0, 1.6, 0), (0, 3.1, 0), 2.2, roof, seg=4, turn=45)
+    p.box((-.38, 0, 1.4), (.38, 1.05, 1.46), door)
+    p.box((-1.0, .75, 1.4), (-.55, 1.2, 1.46), win); p.box((.55, .75, 1.4), (1.0, 1.2, 1.46), win)
+    p.box((.7, 2.2, -.6), (1.05, 3.3, -.25), p.m((.5, .3, .25), .1))
+
+
+@obj("snowman", "Snowman", ["snowman", "snowmen"], 2.4, 4.4, "red")
+def snowman(p, col):
+    col = col or COLORS["red"]
+    snow, dark = p.m(WHITE, .3, 40), p.m(BLACK, .5, 60)
+    p.sphere((0, 1.0, 0), 1.0, snow); p.sphere((0, 2.3, 0), .75, snow); p.sphere((0, 3.35, 0), .55, snow)
+    p.cone((0, 3.35, .45), (0, 3.28, 1.3), .12, p.m((1, .5, .1), .2))
+    for sx in (-1, 1):
+        p.sphere((sx * .2, 3.5, .46), .07, dark)
+    for y in (2.0, 2.4, 2.8):
+        p.sphere((0, y - .1, .72), .07, dark)
+    p.cyl((0, 2.85, 0), (0, 3.0, 0), .66, p.m(col, .2, 30))
+    p.cyl((0, 3.8, 0), (0, 4.35, 0), .36, dark); p.cyl((0, 3.8, 0), (0, 3.86, 0), .62, dark)
+
+
+@obj("rocket", "Rocket", ["rocket", "spaceship", "missile", "spacecraft"], 2.8, 4.8, "white")
+def rocket(p, col):
+    col = col or (.92, .92, .95)
+    body, red = p.m(col, .6, 80), p.m((.85, .12, .1), .5, 70)
+    p.cyl((0, .8, 0), (0, 3.3, 0), .7, body); p.cone((0, 3.3, 0), (0, 4.7, 0), .7, red)
+    p.cone((0, .8, 0), (0, .1, 0), .42, p.m((.3, .3, .33), .3))
+    p.sphere((0, 2.5, .62), .3, p.m((.4, .7, .95), .9, 120))
+    p.box((-.12, .5, .6), (.12, 1.7, 1.45), red); p.box((-.12, .5, -1.45), (.12, 1.7, -.6), red)
+    p.box((.6, .5, -.12), (1.45, 1.7, .12), red); p.box((-1.45, .5, -.12), (-.6, 1.7, .12), red)
+
+
+@obj("lollipop", "Lollipop", ["lollipop", "candy", "sweet"], 1.9, 3.7, "pink")
+def lollipop(p, col):
+    col = col or COLORS["pink"]
+    p.cyl((0, 0, 0), (0, 2.0, 0), .07, p.m(WHITE, .3))
+    p.cyl((0, 2.75, -.12), (0, 2.75, .12), .85, p.m(col, .6, 80))
+    p.cyl((0, 2.75, .1), (0, 2.75, .14), .55, p.m(lighter(col, .7), .5, 60))
+    p.cyl((0, 2.75, .13), (0, 2.75, .17), .27, p.m(col, .6, 80))
+
+
+@obj("balloon", "Balloon", ["balloon"], 1.8, 3.7, "red")
+def balloon(p, col):
+    col = col or COLORS["red"]
+    p.ell((0, 2.7, 0), (.85, 1.0, .85), p.m(col, .9, 120))
+    p.cone((0, 1.68, 0), (0, 1.45, 0), .14, p.m(col, .5, 60))
+    p.cyl((0, 1.5, 0), (0, 0, 0), .025, p.m(WHITE, .1), seg=6)
+
+
+@obj("cupcake", "Cupcake", ["cupcake", "muffin", "cake_small"], 1.9, 2.8, "pink")
+def cupcake(p, col):
+    col = col or COLORS["pink"]
+    p.cyl((0, 0, 0), (0, .95, 0), .75, p.m((.85, .65, .35), .1))
+    for y, r in ((1.0, .9), (1.45, .68), (1.85, .45), (2.15, .24)):
+        p.ell((0, y, 0), (r, .32, r), p.m(col, .5, 60))
+    p.sphere((0, 2.45, 0), .17, p.m((.85, .08, .1), .9, 120))
+
+
+@obj("mushroom", "Mushroom", ["mushroom", "toadstool"], 2.8, 2.7, "red")
+def mushroom(p, col):
+    col = col or COLORS["red"]
+    p.cyl((0, 0, 0), (0, 1.4, 0), .45, p.m((.95, .9, .78), .1))
+    p.ell((0, 1.25, 0), (1.45, 1.2, 1.45), p.m(col, .5, 60), half=True)
+    dots = p.m(WHITE, .3)
+    for x, y, z, r in ((0, 2.4, 0, .26), (.7, 2.05, .5, .2), (-.7, 2.0, .5, .2), (.2, 1.9, 1.05, .17), (-.45, 2.15, -.7, .18)):
+        p.sphere((x, y, z), r, dots)
+
+
+@obj("flower", "Flower", ["flower", "daisy", "rose", "tulip", "sunflower"], 2.2, 3.4, "pink")
+def flower(p, col):
+    import math
+    col = col or COLORS["pink"]
+    green = p.m((.2, .6, .2), .1)
+    p.cyl((0, 0, 0), (0, 2.1, 0), .08, green)
+    p.ell((.45, .9, 0), (.5, .15, .22), green); p.ell((-.45, 1.2, 0), (.5, .15, .22), green)
+    pet = p.m(col, .3, 40)
+    for k in range(8):
+        a = k * math.pi / 4
+        p.ell((.62 * math.cos(a), 2.5 + .62 * math.sin(a), .05), (.34, .34, .12), pet)
+    p.sphere((0, 2.5, .12), .34, p.m((1, .8, .1), .3))
+
+
+@obj("sun", "Sun", ["sun"], 4.4, 4.0, "yellow")
+def sun(p, col):
+    import math
+    col = col or COLORS["yellow"]
+    p.sphere((0, 2.6, 0), 1.0, p.m(col, .2, 20))
+    ray = p.m(lighter(col, .1), .2)
+    for k in range(12):
+        a = k * math.pi / 6
+        d = (math.cos(a), math.sin(a))
+        p.cone((d[0] * 1.2, 2.6 + d[1] * 1.2, 0), (d[0] * 2.05, 2.6 + d[1] * 2.05, 0), .2, ray, seg=10)
+
+
+@obj("cloud", "Cloud", ["cloud"], 4.0, 3.4, "white")
+def cloud(p, col):
+    col = col or WHITE
+    c = p.m(col, .1, 16)
+    for x, y, z, r in ((-.95, 2.4, 0, .7), (0, 2.8, 0, .95), (.95, 2.4, 0, .75), (-.2, 2.35, .6, .6), (.5, 2.5, .55, .55)):
+        p.sphere((x, y, z), r, c)
+    p.ell((0, 2.2, 0), (1.9, .5, .8), c)
+
+
+@obj("castle", "Castle", ["castle", "fort", "palace"], 5.0, 4.4, "grey")
+def castle(p, col):
+    col = col or (.72, .72, .76)
+    stone, roof, door = p.m(col, .1, 20), p.m((.75, .15, .15), .2, 30), p.m((.3, .18, .1), .1)
+    p.box((-1.3, 0, -1.0), (1.3, 2.3, 1.0), stone)
+    for sx in (-1, 1):
+        for sz in (-1, 1):
+            p.cyl((sx * 1.7, 0, sz * 1.2), (sx * 1.7, 3.2, sz * 1.2), .55, stone)
+            p.cone((sx * 1.7, 3.2, sz * 1.2), (sx * 1.7, 4.4, sz * 1.2), .72, roof)
+    p.box((-.4, 0, 1.0), (.4, 1.3, 1.06), door)
+    for x in (-1.1, -.55, 0, .55, 1.1):
+        p.box((x - .15, 2.3, .8), (x + .15, 2.6, 1.0), stone)
+
+
+@obj("lighthouse", "Lighthouse", ["lighthouse"], 2.4, 5.4, "red")
+def lighthouse(p, col):
+    col = col or COLORS["red"]
+    white, red = p.m(WHITE, .2), p.m(col, .3, 40)
+    p.cyl((0, 0, 0), (0, .3, 0), 1.2, p.m((.5, .5, .55), .1))
+    for i, (a, b, r) in enumerate(((.3, 1.2, .95), (1.2, 2.1, .85), (2.1, 3.0, .76), (3.0, 3.9, .68))):
+        p.cyl((0, a, 0), (0, b, 0), r, red if i % 2 == 0 else white)
+    p.cyl((0, 3.9, 0), (0, 4.5, 0), .55, p.m((1, .95, .6), .8, 100))
+    p.cone((0, 4.5, 0), (0, 5.3, 0), .7, red)
+
+
+@obj("robot", "Robot", ["robot", "android", "bot"], 3.2, 4.6, "silver")
+def robot(p, col):
+    col = col or COLORS["silver"]
+    metal, dark = p.m(col, .9, 120), p.m((.2, .22, .28), .3)
+    eye, accent = p.m((.3, .9, 1), .5, 60), p.m((.9, .2, .2), .6, 60)
+    p.box((-.9, 1.2, -.6), (.9, 3.0, .6), metal)
+    p.box((-.6, 3.15, -.5), (.6, 4.0, .5), metal)
+    p.sphere((-.25, 3.6, .5), .13, eye); p.sphere((.25, 3.6, .5), .13, eye)
+    p.cyl((0, 4.0, 0), (0, 4.55, 0), .04, dark); p.sphere((0, 4.6, 0), .12, accent)
+    p.cyl((-1.5, 2.9, 0), (-.9, 2.9, 0), .18, dark); p.cyl((.9, 2.9, 0), (1.5, 2.9, 0), .18, dark)
+    p.sphere((-1.5, 2.9, 0), .28, accent); p.sphere((1.5, 2.9, 0), .28, accent)
+    p.box((-.65, 0, -.3), (-.2, 1.2, .3), dark); p.box((.2, 0, -.3), (.65, 1.2, .3), dark)
+    for x in (-.4, 0, .4):
+        p.sphere((x, 2.4, .62), .09, accent)
+
+
+@obj("table", "Table", ["table", "desk"], 3.4, 1.4, "brown")
+def table(p, col):
+    col = col or WOOD
+    wood = p.m(col, .2, 30)
+    p.box((-1.5, 1.0, -.95), (1.5, 1.2, .95), wood)
+    for sx in (-1, 1):
+        for sz in (-1, 1):
+            p.cyl((sx * 1.25, 0, sz * .7), (sx * 1.25, 1.0, sz * .7), .1, wood, seg=14)
+
+
+@obj("chair", "Chair", ["chair", "seat", "stool"], 1.8, 2.5, "brown")
+def chair(p, col):
+    col = col or WOOD
+    wood = p.m(col, .2, 30)
+    p.box((-.6, .85, -.6), (.6, 1.0, .6), wood)
+    p.box((-.6, 1.0, -.6), (.6, 2.4, -.5), wood)
+    for sx in (-1, 1):
+        for sz in (-1, 1):
+            p.cyl((sx * .5, 0, sz * .5), (sx * .5, .85, sz * .5), .07, wood, seg=12)
+
+
+@obj("lamp", "Street lamp", ["lamp", "streetlamp", "streetlight", "lantern"], 1.4, 4.4, "yellow")
+def lamp(p, col):
+    col = col or (1, .9, .5)
+    iron = p.m((.12, .13, .15), .4, 50)
+    p.cyl((0, 0, 0), (0, .35, 0), .25, iron); p.cyl((0, 0, 0), (0, 3.6, 0), .09, iron)
+    p.sphere((0, 3.95, 0), .4, p.m(col, .9, 120)); p.cone((0, 4.15, 0), (0, 4.65, 0), .52, iron)
+
+
+@obj("windmill", "Windmill", ["windmill"], 3.6, 4.6, "red")
+def windmill(p, col):
+    col = col or COLORS["red"]
+    tower, roof = p.m((.93, .88, .8), .1), p.m(col, .2, 30)
+    blade, wood = p.m((.97, .97, .95), .1), p.m(WOOD, .1)
+    p.cyl((0, 0, 0), (0, 2.7, 0), .9, tower)
+    p.cone((0, 2.7, 0), (0, 3.7, 0), 1.05, roof)
+    p.box((-.2, 0, .86), (.2, .9, .93), wood)
+    # four arms with a sail on each, turning the same way
+    p.box((-.07, 2.9, .95), (.07, 4.5, 1.05), wood); p.box((.07, 3.1, .97), (.6, 4.4, 1.03), blade)
+    p.box((0, 2.83, .95), (1.6, 2.97, 1.05), wood);  p.box((.2, 2.3, .97), (1.5, 2.83, 1.03), blade)
+    p.box((-.07, 1.3, .95), (.07, 2.9, 1.05), wood); p.box((-.6, 1.4, .97), (-.07, 2.7, 1.03), blade)
+    p.box((-1.6, 2.83, .95), (0, 2.97, 1.05), wood); p.box((-1.5, 2.97, .97), (-.2, 3.5, 1.03), blade)
+    p.sphere((0, 2.9, 1.0), .2, wood)
+
+
+@obj("apple", "Apple", ["apple", "fruit", "cherry"], 1.9, 2.1, "red")
+def apple(p, col):
+    col = col or COLORS["red"]
+    p.ell((0, .85, 0), (.95, .85, .95), p.m(col, .9, 120))
+    p.cyl((0, 1.55, 0), (0, 1.95, 0), .05, p.m(WOOD, .1), seg=10)
+    p.ell((.32, 1.8, 0), (.32, .1, .16), p.m((.2, .65, .2), .3))
+
+
+@obj("cactus", "Cactus", ["cactus", "cacti"], 2.6, 3.2, "green")
+def cactus(p, col):
+    col = col or (.25, .6, .3)
+    g = p.m(col, .1, 20)
+    p.cyl((0, 0, 0), (0, 2.5, 0), .48, g); p.ell((0, 2.5, 0), (.48, .48, .48), g, half=True)
+    for sx in (-1, 1):
+        p.cyl((sx * .4, 1.3, 0), (sx * 1.05, 1.3, 0), .24, g)
+        p.sphere((sx * 1.05, 1.3, 0), .24, g)
+        p.cyl((sx * 1.05, 1.3, 0), (sx * 1.05, 2.1 if sx > 0 else 1.9, 0), .24, g)
+        p.ell((sx * 1.05, 2.1 if sx > 0 else 1.9, 0), (.24, .24, .24), g, half=True)
+    p.sphere((0, 3.0, .1), .18, p.m(COLORS["pink"], .3))
+
+
+@obj("trafficcone", "Traffic cone", ["trafficcone", "pylon"], 1.8, 2.4, "orange")
+def trafficcone(p, col):
+    col = col or COLORS["orange"]
+    p.box((-.85, 0, -.85), (.85, .2, .85), p.m((.12, .12, .14), .1))
+    p.cone((0, .2, 0), (0, 2.3, 0), .7, p.m(col, .4, 50))
+    white = p.m(WHITE, .3)
+    p.cyl((0, 1.0, 0), (0, 1.07, 0), .418, white); p.cyl((0, 1.5, 0), (0, 1.57, 0), .292, white)
+
+
+@obj("xmastree", "Christmas tree", ["christmastree", "xmastree", "pinetree", "pine", "fir"], 2.8, 4.7, "green")
+def xmastree(p, col):
+    col = col or (.1, .5, .2)
+    g = p.m(col, .1, 20)
+    p.cyl((0, 0, 0), (0, .9, 0), .25, p.m(WOOD, .1))
+    p.cone((0, .8, 0), (0, 2.5, 0), 1.35, g); p.cone((0, 1.8, 0), (0, 3.4, 0), 1.05, g)
+    p.cone((0, 2.7, 0), (0, 4.1, 0), .72, g)
+    p.sphere((0, 4.2, 0), .2, p.m((1, .85, .2), .9, 120))
+    for x, y, z, c in ((.6, 1.1, .95, (.9, .1, .1)), (-.7, 1.3, .8, (.2, .4, 1)), (.35, 2.2, .65, (1, .8, .2)),
+                       (-.4, 2.3, .7, (.9, .1, .1)), (0, 3.1, .5, (.2, .4, 1))):
+        p.sphere((x, y, z), .15, p.m(c, .9, 120))
+
+
+@obj("cake", "Birthday cake", ["cake", "birthdaycake"], 3.4, 2.7, "pink")
+def cake(p, col):
+    col = col or COLORS["pink"]
+    ic = p.m(WHITE, .3)
+    p.cyl((0, 0, 0), (0, .12, 0), 1.75, p.m((.9, .9, .92), .5, 60))
+    p.cyl((0, .12, 0), (0, 1.0, 0), 1.45, p.m(col, .3, 40)); p.cyl((0, 1.0, 0), (0, 1.1, 0), 1.5, ic)
+    p.cyl((0, 1.1, 0), (0, 1.8, 0), 1.0, p.m(lighter(col, .4), .3, 40)); p.cyl((0, 1.8, 0), (0, 1.9, 0), 1.05, ic)
+    for x, c in ((-.4, (.9, .2, .2)), (0, (.2, .5, 1)), (.4, (.95, .8, .2))):
+        p.cyl((x, 1.9, 0), (x, 2.4, 0), .06, p.m(c, .4))
+        p.cone((x, 2.4, 0), (x, 2.62, 0), .07, p.m((1, .8, .2), .8, 80), seg=8)
+
+
+@obj("tent", "Tent", ["tent", "camp", "tipi"], 3.4, 2.4, "orange")
+def tent(p, col):
+    col = col or COLORS["orange"]
+    p.cone((0, 0, 0), (0, 2.3, 0), 2.1, p.m(col, .2, 30), seg=4, turn=45)
+    p.sw.shape_lines.append("triangle v0 %s v1 %s v2 %s material %s" % (
+        vec(p.P((-.55, 0, 1.52))), vec(p.P((.55, 0, 1.52))), vec(p.P((0, 1.25, .72))), p.m((.15, .12, .1), .1)))
+
+
+@obj("mailbox", "Mailbox", ["mailbox", "postbox"], 1.6, 2.7, "blue")
+def mailbox(p, col):
+    col = col or COLORS["blue"]
+    p.cyl((0, 0, 0), (0, 1.8, 0), .1, p.m(WOOD, .1))
+    p.box((-.5, 1.8, -.4), (.5, 2.45, .4), p.m(col, .6, 80))
+    p.ell((0, 2.45, 0), (.5, .3, .4), p.m(col, .6, 80), half=True)
+    p.box((.5, 2.05, -.05), (.62, 2.7, .05), p.m((.9, .15, .1), .4))
+
+
+@obj("bench", "Bench", ["bench"], 3.4, 1.8, "brown")
+def bench(p, col):
+    col = col or WOOD
+    wood, iron = p.m(col, .2, 30), p.m((.15, .15, .17), .3)
+    p.box((-1.5, .75, -.4), (1.5, .9, .4), wood); p.box((-1.5, 1.0, -.52), (1.5, 1.7, -.42), wood)
+    for sx in (-1, 1):
+        p.box((sx * 1.3 - .06, 0, -.35), (sx * 1.3 + .06, .75, .35), iron)
+        p.box((sx * 1.3 - .06, .9, -.5), (sx * 1.3 + .06, 1.7, -.4), iron)
+
+
+@obj("fence", "Fence", ["fence", "gate"], 3.8, 1.8, "white")
+def fence(p, col):
+    col = col or WHITE
+    w = p.m(col, .2, 30)
+    p.box((-1.9, .35, -.03), (1.9, .5, .09), w); p.box((-1.9, 1.0, -.03), (1.9, 1.15, .09), w)
+    for k in range(7):
+        x = -1.65 + k * .55
+        p.box((x - .17, 0, -.05), (x + .17, 1.4, .05), w)
+        p.cone((x, 1.4, 0), (x, 1.68, 0), .24, w, seg=4, turn=45)
+
+
+@obj("pumpkin", "Pumpkin", ["pumpkin"], 2.6, 2.0, "orange")
+def pumpkin(p, col):
+    col = col or COLORS["orange"]
+    o = p.m(col, .3, 40)
+    p.ell((0, .85, 0), (1.15, .85, 1.1), o); p.ell((-.55, .85, .2), (.7, .82, .85), o)
+    p.ell((.55, .85, .2), (.7, .82, .85), o)
+    p.cyl((0, 1.6, 0), (0, 2.0, 0), .12, p.m((.25, .5, .15), .1), seg=10)
+
+
+@obj("duck", "Rubber duck", ["duck", "rubberduck", "duckling"], 2.2, 2.4, "yellow")
+def duck(p, col):
+    col = col or COLORS["yellow"]
+    y, o = p.m(col, .7, 90), p.m((1, .5, .1), .4, 40)
+    p.ell((0, .8, 0), (1.0, .75, .8), y); p.ell((-.95, 1.1, 0), (.4, .35, .3), y)
+    p.sphere((.35, 1.85, 0), .6, y)
+    p.ell((.95, 1.8, 0), (.35, .12, .26), o)
+    p.sphere((.65, 2.0, .35), .08, p.m(BLACK, .7, 80)); p.sphere((.65, 2.0, -.35), .08, p.m(BLACK, .7, 80))
+
+
+@obj("penguin", "Penguin", ["penguin"], 2.2, 3.2, "black")
+def penguin(p, col):
+    col = col or BLACK
+    b, w, o = p.m(col, .3, 40), p.m(WHITE, .2), p.m((1, .55, .1), .3)
+    p.ell((0, 1.3, 0), (.95, 1.3, .8), b); p.ell((0, 1.15, .3), (.7, 1.0, .6), w)
+    p.sphere((0, 2.75, 0), .62, b)
+    p.cone((0, 2.65, .5), (0, 2.58, 1.1), .16, o)
+    for sx in (-1, 1):
+        p.sphere((sx * .25, 2.9, .5), .09, w); p.sphere((sx * .25, 2.9, .57), .05, p.m(BLACK, .7, 80))
+        p.ell((sx * 1.0, 1.5, 0), (.2, .8, .3), b)
+        p.ell((sx * .4, .1, .5), (.35, .1, .5), o)
+
+
+@obj("pizza", "Pizza", ["pizza"], 3.4, .6, "red")
+def pizza(p, col):
+    import math
+    col = col or COLORS["red"]
+    p.cyl((0, 0, 0), (0, .14, 0), 1.6, p.m((.85, .62, .32), .1))
+    p.cyl((0, .14, 0), (0, .17, 0), 1.35, p.m(col, .3, 40))
+    p.cyl((0, .17, 0), (0, .2, 0), 1.2, p.m((1, .85, .4), .3, 40))
+    pep = p.m((.7, .15, .1), .3, 40)
+    for k in range(7):
+        a = k * 2 * math.pi / 7
+        p.cyl((.7 * math.cos(a), .2, .7 * math.sin(a)), (.7 * math.cos(a), .26, .7 * math.sin(a)), .2, pep, seg=16)
+    p.cyl((0, .2, 0), (0, .26, 0), .2, pep, seg=16)
+
+
+@obj("donut", "Donut", ["donut", "doughnut"], 2.6, 1.0, "pink")
+def donut(p, col):
+    import math
+    col = col or COLORS["pink"]
+    dough, icing = p.m((.85, .6, .3), .15, 20), p.m(col, .6, 80)
+    spr = [p.m(c, .3) for c in ((1, 1, 1), (.2, .5, 1), (1, .85, .2), (.3, .8, .4))]
+    for k in range(24):
+        a = k * 2 * math.pi / 24
+        p.sphere((.95 * math.cos(a), .42, .95 * math.sin(a)), .42, dough)
+    for k in range(24):
+        a = k * 2 * math.pi / 24
+        p.sphere((.95 * math.cos(a), .56, .95 * math.sin(a)), .38, icing)
+    for k in range(10):
+        a = k * 2 * math.pi / 10 + .3
+        p.sphere((.95 * math.cos(a), .96, .95 * math.sin(a)), .06, spr[k % 4])
+
+
+@obj("ball", "Ball", ["ball", "sphere", "marble", "globe"], 2.0, 2.0, "red")
+def ball(p, col):
+    col = col or COLORS["red"]
+    p.sphere((0, 1.0, 0), 1.0, p.m(col, .9, 120))
+
+
+@obj("igloo", "Igloo", ["igloo"], 3.6, 2.2, "white")
+def igloo(p, col):
+    col = col or WHITE
+    s = p.m(col, .3, 40)
+    p.ell((0, 0, 0), (1.8, 2.0, 1.8), s, half=True)
+    p.box((-.6, 0, 1.2), (.6, .9, 2.1), s)
+    p.ell((0, .9, 2.1), (.6, .35, .1), p.m((.1, .1, .15), .1))
+    p.box((-.4, 0, 2.02), (.4, .8, 2.14), p.m((.08, .08, .12), .1))
+
+
+@obj("bunny", "Bunny", ["bunny", "rabbit", "hare"], 2.2, 3.6, "white")
+def bunny(p, col):
+    col = col or WHITE
+    f, pink = p.m(col, .15, 20), p.m((1, .65, .75), .2)
+    p.ell((0, 1.0, 0), (.85, 1.0, .85), f); p.sphere((0, 2.35, .2), .6, f)
+    for sx in (-1, 1):
+        p.ell((sx * .25, 3.35, .05), (.17, .75, .13), f); p.ell((sx * .25, 3.35, .12), (.09, .6, .06), pink)
+        p.sphere((sx * .27, 2.5, .72), .07, p.m(BLACK, .7, 80))
+        p.sphere((sx * .45, .25, .55), .3, f)
+    p.sphere((0, 2.3, .8), .1, pink); p.sphere((0, .85, -.8), .28, f)
+
+
+@obj("cat", "Cat", ["cat", "kitten", "kitty"], 2.6, 3.0, "grey")
+def cat(p, col):
+    col = col or (.85, .55, .25)
+    f, dk = p.m(col, .15, 20), p.m(BLACK, .7, 80)
+    p.ell((0, 1.0, 0), (.85, 1.0, .75), f); p.sphere((0, 2.3, .1), .62, f)
+    for sx in (-1, 1):
+        p.cone((sx * .38, 2.62, .05), (sx * .45, 3.2, .05), .2, f, seg=12)
+        p.sphere((sx * .22, 2.4, .6), .09, dk); p.sphere((sx * .45, .2, .5), .3, f)
+    p.sphere((0, 2.25, .7), .08, p.m((1, .6, .65), .3))
+    p.cyl((.2, .3, -.7), (.9, 1.7, -.8), .12, f, seg=14); p.sphere((.9, 1.7, -.8), .12, f)
+
+
+def object_list():
+    return [dict(key=o["key"], title=o["title"], default=o["default"]) for o in OBJECTS.values()]
+
+
+# ---------------------------------------------------------------- composing a scene
+DAY = dict(top=(0.42, 0.64, 0.95), bottom=(0.95, 0.97, 1.0), floor=(0.84, 0.87, 0.9), check=(0.77, 0.80, 0.85))
+SUNSET = dict(top=(0.30, 0.22, 0.58), bottom=(1.0, 0.62, 0.36), floor=(0.62, 0.45, 0.42), check=(0.55, 0.40, 0.38))
+NIGHT = dict(top=(0.01, 0.02, 0.10), bottom=(0.10, 0.13, 0.32), floor=(0.13, 0.15, 0.22), check=(0.10, 0.12, 0.18))
+
+MAX_OBJECTS = 24
+GAP = 0.7
+
+
+def sky_from_color(c):
+    return dict(top=mix(c, (0, 0, 0), 0.08), bottom=mix(c, (1, 1, 1), 0.5),
+                floor=mix(c, (1, 1, 1), 0.62), check=mix(c, (1, 1, 1), 0.48))
+
+
+def layout(items):
+    """items: list of dict(key, color, row, hint). Returns placed objects."""
+    rank = {"left": 0, None: 1, "center": 1, "right": 2}
+    placed = []
+    for row, z in (("front", 0.0), ("back", -5.0)):
+        row_items = [it for it in items if it["row"] == row]
+        row_items.sort(key=lambda it: rank.get(it["hint"], 1))
+        if not row_items:
+            continue
+        widths = [OBJECTS[it["key"]]["width"] for it in row_items]
+        total = sum(widths) + GAP * (len(widths) - 1)
+        scale = min(1.0, 24.0 / total)
+        total *= scale
+        x = -total / 2
+        for it, w in zip(row_items, widths):
+            w *= scale
+            placed.append(dict(it, x=x + w / 2, z=z, s=scale, w=w))
+            x += w + GAP * scale
+    return placed
+
+
+def compose(items, sky=None, floor_color=None, mood="day", width=640, height=360, spp=16):
+    """Returns (scene_text, placed_objects)."""
+    items = items[:MAX_OBJECTS]
+    sw = SceneWriter()
+    placed = layout(items)
+    for pl in placed:
+        pen = Pen(sw, pl["x"], pl["z"], pl["s"])
+        OBJECTS[pl["key"]]["fn"](pen, pl["color"])
+
+    base = {"day": DAY, "sunset": SUNSET, "night": NIGHT}.get(mood, DAY)
+    look = sky_from_color(sky) if sky else base
+    floor_mat = None
+    ymax = max([OBJECTS[p["key"]]["height"] * p["s"] for p in placed] or [3.0])
+    xmin = min([p["x"] - p["w"] / 2 for p in placed] or [-2])
+    xmax = max([p["x"] + p["w"] / 2 for p in placed] or [2])
+    has_back = any(p["z"] < 0 for p in placed)
+    cx, span = (xmin + xmax) / 2, xmax - xmin + 2.0
+    dist = max(6.8, span * 0.86, ymax * 1.9)
+    eye = (cx + dist * 0.12, ymax * 0.5 + 1.6, dist)
+    look_at = (cx, ymax * 0.42, -1.5 if has_back else 0.0)
+
+    night, sunset = mood == "night", mood == "sunset"
+    ambient = 0.09 if night else (0.17 if sunset else 0.22)
+    key_col = (0.55, 0.6, 1.0) if night else ((1.0, 0.72, 0.5) if sunset else (1.0, 1.0, 1.0))
+    key_int = 0.55 if night else 1.0
+
+    lines = ["# Generated by the SheepStealer prompt reader.",
+             "settings width %d height %d spp %d depth 5 ambient %s seed 7" % (width, height, spp, num(ambient)),
+             "camera eye %s lookat %s up 0 1 0 fov 38" % (vec(eye), vec(look_at)),
+             "background top %s bottom %s" % (vec(look["top"]), vec(look["bottom"])), ""]
+    if floor_color:
+        floor_def = "material floor matte color %s specular 0.05 shininess 20" % vec(floor_color)
+    else:
+        floor_def = "material floor matte color %s checker %s scale 1.4 specular 0.05 shininess 20" % (
+            vec(look["floor"]), vec(look["check"]))
+    lines += sw.mat_lines + [floor_def, "", "plane point 0 0 0 normal 0 1 0 material floor", ""]
+    lines += sw.shape_lines + [""]
+    lines += ["light position %s intensity %s color %s" % (vec((cx - 6, 9 + ymax, dist * 0.9)), num(key_int), vec(key_col)),
+              "light position %s intensity 0.4 color %s" % (vec((cx + 9, 5, dist * 0.6)), vec(mix(key_col, (1, 1, 1), .4)))]
+    return "\n".join(lines) + "\n", placed

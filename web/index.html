@@ -4,120 +4,392 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>SheepStealer Engine</title>
+<meta name="description" content="Type a scene and a C++ ray tracer draws it.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;600&display=swap" rel="stylesheet">
 <style>
-  :root { --bg:#f5f7fa; --card:#fff; --text:#1c2430; --muted:#5b6675; --line:#d9dfe7; --accent:#1f4e79; --err:#b3261e; --code:#f1f4f8; }
+  :root {
+    --paper: #f2f0fb; --surface: #ffffff; --ink: #1d1b34; --muted: #625f86; --line: #d9d5ee;
+    --blue: #3b5bff; --blue-ink: #ffffff; --soft: #e8e5f8; --warn: #8a4b00; --warn-bg: #fff1d6; --bad: #b3261e;
+    --tint: 190, 205, 245;
+    --display: "Bricolage Grotesque", "Trebuchet MS", system-ui, sans-serif;
+    --body: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
   @media (prefers-color-scheme: dark) {
-    :root { --bg:#12161c; --card:#1b212a; --text:#e8ecf1; --muted:#9aa5b4; --line:#2e3744; --accent:#6aa6e0; --err:#ff8a80; --code:#141a21; }
+    :root {
+      --paper: #14122b; --surface: #1e1b3d; --ink: #ece9ff; --muted: #a29fc9; --line: #35316a;
+      --blue: #7d91ff; --blue-ink: #10102a; --soft: #2a2655; --warn: #ffd08a; --warn-bg: #3b2c10; --bad: #ff8a80;
+    }
   }
   * { box-sizing: border-box; }
-  body { margin:0; background:var(--bg); color:var(--text); font:16px/1.5 system-ui, sans-serif; }
-  header, main { max-width:1100px; margin:0 auto; padding:0 16px; }
-  header { padding-top:24px; padding-bottom:8px; }
-  h1 { margin:0; font-size:1.6rem; color:var(--accent); }
-  header p { margin:4px 0 0; color:var(--muted); }
-  main { display:grid; grid-template-columns:1fr 1fr; gap:16px; padding-bottom:32px; }
-  @media (max-width:800px) { main { grid-template-columns:1fr; } }
-  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; }
-  label { display:block; font-size:.85rem; color:var(--muted); margin:10px 0 4px; }
-  select, textarea, button { font:inherit; color:var(--text); }
-  select { width:100%; padding:8px; border:1px solid var(--line); border-radius:8px; background:var(--card); }
-  .row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
-  textarea { width:100%; height:300px; padding:10px; border:1px solid var(--line); border-radius:8px; background:var(--code);
-             font:13px/1.45 ui-monospace, Consolas, monospace; resize:vertical; white-space:pre; overflow:auto; }
-  button { margin-top:12px; padding:10px 18px; border:0; border-radius:8px; background:var(--accent); color:#fff; font-weight:600; cursor:pointer; }
-  button:disabled { opacity:.6; cursor:wait; }
-  #status { margin:0 0 10px; color:var(--muted); min-height:1.5em; }
-  #error { color:var(--err); font-weight:600; white-space:pre-wrap; }
-  #pic { display:block; width:100%; height:auto; border-radius:8px; background:var(--code); min-height:120px; }
-  #dl { display:none; margin-top:10px; color:var(--accent); font-weight:600; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.55 var(--body); }
+  .wrap { max-width: 1160px; margin: 0 auto; padding: 0 20px; }
+  a { color: inherit; }
+  :focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; border-radius: 6px; }
+  button, select, textarea { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+
+  /* header */
+  .top { display: flex; align-items: center; justify-content: space-between; padding: 18px 0; gap: 16px; }
+  .brand { display: flex; align-items: center; gap: 10px; font: 700 1.2rem var(--display); text-decoration: none; }
+  .brand svg { width: 30px; height: 30px; flex: none; }
+  .nav { display: flex; gap: 6px; flex-wrap: nowrap; }
+  .nav a { white-space: nowrap; }
+  .nav a { text-decoration: none; padding: 6px 12px; border-radius: 999px; color: var(--muted); font-weight: 600; font-size: .95rem; }
+  .nav a:hover { background: var(--soft); color: var(--ink); }
+
+  /* sentence box */
+  .compose { padding: 20px 0 8px; }
+  h1 { font: 700 clamp(1.9rem, 4.4vw, 2.9rem)/1.05 var(--display); letter-spacing: -.02em; margin: 0 0 8px; max-width: 24ch; }
+  .lead { margin: 0 0 16px; color: var(--muted); max-width: 56ch; font-size: 1.05rem; }
+  .prompt { display: flex; gap: 10px; background: var(--surface); border: 2px solid var(--line); border-radius: 22px; padding: 10px 10px 10px 18px; align-items: flex-end; }
+  .prompt:focus-within { border-color: var(--blue); }
+  .prompt textarea { flex: 1; border: 0; background: transparent; resize: none; outline: none; font: 500 clamp(1.15rem, 2.4vw, 1.55rem)/1.3 var(--display); padding: 8px 0; min-height: 2.7em; }
+  .prompt textarea::placeholder { color: var(--muted); opacity: .7; }
+  .go { background: var(--blue); color: var(--blue-ink); border: 0; border-radius: 14px; padding: 14px 26px; font: 700 1.05rem var(--display); }
+  .go:hover { filter: brightness(1.08); }
+  .go:disabled, .ghost:disabled { opacity: .55; cursor: progress; }
+  .msg { min-height: 1.6em; margin: 10px 4px 0; font-weight: 600; }
+  .msg.err { color: var(--bad); }
+  .suggest { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 0; }
+  #suggest { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 6px; }
+  #suggest .chip { flex: none; }
+  .chip { border: 1.5px solid var(--line); background: var(--surface); border-radius: 999px; padding: 6px 14px; font-size: .92rem; }
+  .chip:hover { border-color: var(--blue); }
+  .opts { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; margin: 14px 4px 0; color: var(--muted); font-size: .95rem; }
+  .opts select { background: var(--surface); border: 1.5px solid var(--line); border-radius: 10px; padding: 6px 10px; margin-left: 6px; color: var(--ink); }
+
+  /* stage */
+  .stage { margin-top: 14px; display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 18px; align-items: start; }
+  .frame { position: relative; border-radius: 28px; overflow: hidden; background: rgb(var(--tint)); padding: clamp(10px, 2.4vw, 26px); transition: background-color .6s ease; }
+  .frame img { display: block; width: 100%; height: auto; border-radius: 16px; background: rgba(255,255,255,.4); aspect-ratio: 16 / 9; object-fit: cover; }
+  .busy { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(20, 18, 43, .38); }
+  .busy.on { display: flex; }
+  .busy p { margin: 0; background: var(--surface); padding: 10px 18px; border-radius: 999px; font-weight: 600; box-shadow: 0 6px 24px rgba(20,18,43,.25); }
+  .busy p::before { content: ""; display: inline-block; width: 12px; height: 12px; margin-right: 10px; border-radius: 50%; background: var(--blue); animation: pulse 1s ease-in-out infinite; }
+  @keyframes pulse { 50% { transform: scale(1.7); opacity: .4; } }
+  @media (prefers-reduced-motion: reduce) { .busy p::before { animation: none; } html { scroll-behavior: auto; } .frame { transition: none; } }
+
+  .facts { background: var(--surface); border: 1.5px solid var(--line); border-radius: 22px; padding: 20px; }
+  .facts h2 { font: 700 1.15rem var(--display); margin: 0 0 8px; }
+  .facts ul { margin: 0 0 12px; padding-left: 1.1em; }
+  .facts li { margin: 2px 0; }
+  .facts .time { color: var(--muted); margin: 0 0 14px; }
+  .skipped { background: var(--warn-bg); color: var(--warn); border-radius: 12px; padding: 10px 12px; margin: 0 0 14px; font-size: .93rem; }
+  .actions { display: flex; flex-direction: column; gap: 8px; }
+  .ghost, .dl { display: block; text-align: center; text-decoration: none; background: var(--soft); border: 0; border-radius: 12px; padding: 10px 14px; font-weight: 600; }
+  .ghost:hover, .dl:hover { background: var(--line); }
+  .dl[hidden] { display: none; }
+
+  .history { display: flex; gap: 10px; overflow-x: auto; padding: 14px 2px 4px; }
+  .history button { flex: none; width: 112px; padding: 0; border: 2px solid transparent; border-radius: 12px; overflow: hidden; background: none; }
+  .history button[aria-current="true"] { border-color: var(--blue); }
+  .history img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; }
+
+  /* sections */
+  section.block { padding: 54px 0 0; }
+  h2.title { font: 700 clamp(1.5rem, 3vw, 2.1rem)/1.15 var(--display); margin: 0 0 6px; letter-spacing: -.01em; }
+  .sub { color: var(--muted); margin: 0 0 20px; max-width: 62ch; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+  .card { text-align: left; padding: 0; border: 1.5px solid var(--line); background: var(--surface); border-radius: 16px; overflow: hidden; display: flex; flex-direction: column; }
+  .card:hover { border-color: var(--blue); }
+  .card img { display: block; width: 100%; aspect-ratio: 16 / 10; object-fit: cover; background: var(--soft); }
+  .card span { padding: 8px 12px 10px; font-weight: 600; font-size: .95rem; }
+  .card.added { border-color: var(--blue); }
+  .words { display: grid; gap: 22px; }
+  .words h3 { margin: 0 0 8px; font: 700 1.05rem var(--display); }
+  .swatches { display: flex; flex-wrap: wrap; gap: 8px; }
+  .swatch { display: flex; align-items: center; gap: 8px; border: 1.5px solid var(--line); background: var(--surface); border-radius: 999px; padding: 4px 12px 4px 4px; font-size: .92rem; }
+  .swatch i { width: 22px; height: 22px; border-radius: 50%; border: 1px solid rgba(0,0,0,.18); display: block; }
+  .swatch:hover { border-color: var(--blue); }
+
+  /* scene editor */
+  .editor { background: var(--surface); border: 1.5px solid var(--line); border-radius: 22px; padding: 20px; }
+  .editor .bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 12px; }
+  .editor select { background: var(--paper); border: 1.5px solid var(--line); border-radius: 10px; padding: 8px 10px; }
+  .editor textarea { width: 100%; height: 340px; resize: vertical; background: var(--paper); border: 1.5px solid var(--line); border-radius: 14px; padding: 12px; font: 13px/1.5 ui-monospace, SFMono-Regular, Consolas, monospace; white-space: pre; overflow: auto; }
+  .editor .go { margin-top: 12px; }
+  .foot { margin: 64px 0 40px; color: var(--muted); font-size: .95rem; max-width: 70ch; }
+
+  @media (max-width: 520px) { .nav a:nth-child(2), .nav a:nth-child(4) { display: none; } }
+  @media (max-width: 860px) {
+    .stage { grid-template-columns: 1fr; }
+    .prompt { flex-direction: column; align-items: stretch; padding: 14px; }
+    .go { width: 100%; }
+  }
 </style>
 </head>
 <body>
-<header>
-  <h1>SheepStealer Engine</h1>
-  <p>A ray tracer written in C++. Edit the scene text, press Render, get a picture.</p>
-</header>
-<main>
-  <section class="card">
-    <label for="example">Example scene</label>
-    <select id="example"></select>
-    <div class="row">
-      <div><label for="size">Picture size</label>
-        <select id="size">
-          <option value="320x180">Small (320 x 180)</option>
-          <option value="480x270" selected>Medium (480 x 270)</option>
-          <option value="640x360">Large (640 x 360)</option>
-        </select></div>
-      <div><label for="quality">Quality (smooth edges)</label>
-        <select id="quality">
-          <option value="4">Fast</option>
-          <option value="8" selected>Normal</option>
-          <option value="16">High</option>
-        </select></div>
-    </div>
-    <label for="scene">Scene file</label>
-    <textarea id="scene" spellcheck="false"></textarea>
-    <button id="go">Render</button>
-  </section>
-  <section class="card">
-    <p id="status">Pick an example and press Render.</p>
-    <p id="error"></p>
-    <img id="pic" alt="Rendered picture will appear here">
-    <a id="dl" download="sheepstealer.png">Download PNG</a>
-  </section>
-</main>
+<div class="wrap">
+  <header class="top">
+    <a class="brand" href="#">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="14" fill="#3b5bff"/><ellipse cx="11.5" cy="10.5" rx="4.5" ry="3" fill="#fff" opacity=".75" transform="rotate(-30 11.5 10.5)"/></svg>
+      SheepStealer
+    </a>
+    <nav class="nav" aria-label="Page sections">
+      <a href="#library">Objects</a>
+      <a href="#words">Words</a>
+      <a href="#scene">Scene file</a>
+      <a href="https://github.com/SiddhishMaste/shepstealer">Code</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="compose">
+      <h1>Type a scene, get a ray&#8209;traced picture</h1>
+      <p class="lead">A C++ ray tracer draws every picture from simple shapes. Name some objects, pick colours and add a background.</p>
+
+      <form class="prompt" id="form">
+        <textarea id="prompt" rows="2" maxlength="300" aria-label="Describe your scene" placeholder="a blue toy car with pink trees in the background">a blue toy car with pink trees in the background</textarea>
+        <button class="go" id="go" type="submit">Render</button>
+      </form>
+      <p class="msg" id="msg" role="status"></p>
+      <div class="suggest" id="suggest"></div>
+      <div class="opts">
+        <label>Picture size
+          <select id="size">
+            <option value="480x270">Small</option>
+            <option value="640x360" selected>Medium</option>
+            <option value="960x540">Large</option>
+          </select></label>
+        <label>Quality
+          <select id="quality">
+            <option value="4">Draft</option>
+            <option value="12" selected>Normal</option>
+            <option value="24">High</option>
+          </select></label>
+      </div>
+    </section>
+
+    <section class="stage" aria-label="Result">
+      <div>
+        <div class="frame" id="frame">
+          <img id="pic" src="/img/hero.jpg" alt="A blue toy car with pink trees behind it, drawn by the ray tracer">
+          <div class="busy" id="busy"><p id="busyText">Reading your sentence</p></div>
+        </div>
+        <div class="history" id="history" aria-label="Earlier pictures"></div>
+      </div>
+      <aside class="facts">
+        <h2>In this picture</h2>
+        <ul id="understood"><li>blue toy car</li><li>3 pink trees (background)</li></ul>
+        <div class="skipped" id="skipped" hidden></div>
+        <p class="time" id="time">Sample picture made by the engine.</p>
+        <div class="actions">
+          <a class="dl" id="dl" href="/img/hero.jpg" download="sheepstealer.jpg">Download picture</a>
+          <button class="ghost" id="editScene" type="button">Open scene file</button>
+        </div>
+      </aside>
+    </section>
+
+    <section class="block" id="library">
+      <h2 class="title">Objects you can ask for</h2>
+      <p class="sub">Each one is built from boxes, cylinders, cones, spheres and squashed spheres. Click an object to add it to your sentence.</p>
+      <div class="grid" id="grid"></div>
+    </section>
+
+    <section class="block" id="words">
+      <h2 class="title">Words it understands</h2>
+      <p class="sub">Put a colour before an object, a number before a plural, and say where things go. Click a word to add it where your cursor is.</p>
+      <div class="words">
+        <div><h3>Colours</h3><div class="swatches" id="colors"></div></div>
+        <div><h3>Scene</h3><div class="suggest" id="sceneWords"></div></div>
+      </div>
+    </section>
+
+    <section class="block" id="scene">
+      <h2 class="title">The scene file</h2>
+      <p class="sub">Your sentence becomes this text, and the C++ engine reads it. You can also edit it by hand or start from an example, then render it.</p>
+      <div class="editor">
+        <div class="bar">
+          <label for="example">Start from</label>
+          <select id="example"><option value="">Your last sentence</option></select>
+        </div>
+        <textarea id="sceneText" spellcheck="false" aria-label="Scene file"></textarea>
+        <button class="go" id="goScene" type="button">Render scene file</button>
+        <p class="msg" id="sceneMsg" role="status"></p>
+      </div>
+    </section>
+
+    <p class="foot">Built by Siddhish Maste, Tanmay Khatwar and Umang Dangi. The renderer is written in C++17. This page only sends text to the server and shows the picture that comes back.</p>
+  </main>
+</div>
+
 <script>
 const $ = (id) => document.getElementById(id);
-let examples = [];
+const SUGGESTIONS = [
+  "a blue toy car with pink trees in the background",
+  "an ice cream on a yellow background",
+  "3 snowmen on snow at night",
+  "a red house, a lighthouse and a forest at sunset",
+  "a pink donut, a blue cupcake and a yellow duck on a purple background",
+];
+const SCENE_WORDS = ["in the background", "on the left", "on the right", "2", "3", "5",
+  "day", "sunset", "night", "on grass", "on snow", "on sand", "on the road", "on the sea"];
+let examples = [], history = [], lastScene = "", busy = false;
 
-async function loadExamples() {
+function size() { const [w, h] = $("size").value.split("x").map(Number); return { width: w, height: h, spp: Number($("quality").value) }; }
+function say(text, isError) { $("msg").textContent = text || ""; $("msg").className = "msg" + (isError ? " err" : ""); }
+function setBusy(on, text) {
+  busy = on;
+  $("busy").classList.toggle("on", on);
+  if (text) $("busyText").textContent = text;
+  for (const id of ["go", "goScene", "editScene"]) $(id).disabled = on;
+}
+try { const saved = JSON.parse(localStorage.getItem("sheep") || "{}"); if (saved.size) $("size").value = saved.size; if (saved.quality) $("quality").value = saved.quality; } catch (e) {}
+function remember() { try { localStorage.setItem("sheep", JSON.stringify({ size: $("size").value, quality: $("quality").value })); } catch (e) {} }
+$("size").addEventListener("change", remember); $("quality").addEventListener("change", remember);
+
+async function asJson(res) { try { return await res.json(); } catch (e) { return {}; } }
+
+function tintFrom(img) {
   try {
-    const res = await fetch('/api/examples');
-    examples = await res.json();
-  } catch (e) { examples = []; }
-  $('example').innerHTML = examples.map((x, i) => '<option value="' + i + '">' + x.name + '</option>').join('');
-  if (examples.length) $('scene').value = examples[0].scene;
+    const c = document.createElement("canvas"); c.width = 16; c.height = 9;
+    const g = c.getContext("2d"); g.drawImage(img, 0, 0, 16, 9);
+    const row = g.getImageData(0, 0, 16, 2).data; let r = 0, gr = 0, b = 0, n = 0;
+    for (let i = 0; i < row.length; i += 4) { r += row[i]; gr += row[i + 1]; b += row[i + 2]; n++; }
+    document.documentElement.style.setProperty("--tint", [r, gr, b].map(v => Math.round(v / n * 0.85 + 255 * 0.15)).join(", "));
+  } catch (e) {}
+}
+$("pic").addEventListener("load", () => tintFrom($("pic")));
+if ($("pic").complete) tintFrom($("pic"));
+
+function showFacts(understood, ignored, notes, seconds) {
+  const list = $("understood"); list.innerHTML = "";
+  const [objs, extra] = (understood || "").split(" | ");
+  (objs || "").split(", ").filter(Boolean).forEach(t => { const li = document.createElement("li"); li.textContent = t; list.appendChild(li); });
+  (extra || "").split(", ").filter(Boolean).forEach(t => { const li = document.createElement("li"); li.textContent = t; list.appendChild(li); });
+  const sk = $("skipped");
+  const bits = [];
+  if (ignored && ignored.length) bits.push("Skipped words it does not know: " + ignored.join(", ") + ".");
+  (notes || []).forEach(n => bits.push(n));
+  sk.hidden = bits.length === 0; sk.textContent = bits.join(" ");
+  $("time").textContent = seconds ? "Rendered in " + seconds + " s." : "";
 }
 
-$('example').addEventListener('change', () => {
-  $('scene').value = examples[Number($('example').value)].scene;
+function addHistory(entry) {
+  history.unshift(entry); history = history.slice(0, 8);
+  const box = $("history"); box.innerHTML = "";
+  history.forEach((h, i) => {
+    const b = document.createElement("button"); b.type = "button"; b.setAttribute("aria-label", "Show picture: " + h.prompt);
+    if (i === 0) b.setAttribute("aria-current", "true");
+    const im = document.createElement("img"); im.src = h.url; im.alt = ""; b.appendChild(im);
+    b.addEventListener("click", () => { show(h); [...box.children].forEach(c => c.removeAttribute("aria-current")); b.setAttribute("aria-current", "true"); });
+    box.appendChild(b);
+  });
+}
+function show(h) {
+  $("pic").src = h.url; $("pic").alt = h.prompt || "Rendered picture";
+  $("dl").href = h.url; $("dl").download = "sheepstealer.png"; $("dl").hidden = false;
+  if (h.prompt) $("prompt").value = h.prompt;
+  if (h.scene) { $("sceneText").value = h.scene; lastScene = h.scene; }
+  showFacts(h.understood, h.ignored, h.notes, h.seconds);
+}
+
+async function renderScene(scene, label) {
+  setBusy(true, "Tracing rays");
+  const started = performance.now();
+  const res = await fetch("/api/render", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(Object.assign({ scene }, size())) });
+  if (!res.ok) { const j = await asJson(res); throw new Error(j.error || "The render failed (" + res.status + ")."); }
+  const seconds = res.headers.get("X-Render-Seconds") || ((performance.now() - started) / 1000).toFixed(1);
+  return { url: URL.createObjectURL(await res.blob()), seconds };
+}
+
+async function generate(text) {
+  if (busy) return;
+  text = (text || "").trim();
+  if (!text) { say("Type what you want to see, for example: a blue car with pink trees.", true); return; }
+  say(""); setBusy(true, "Reading your sentence");
+  try {
+    const res = await fetch("/api/compose", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(Object.assign({ prompt: text }, size())) });
+    const data = await asJson(res);
+    if (!res.ok) throw new Error(data.error || "Something went wrong (" + res.status + ").");
+    const out = await renderScene(data.scene);
+    const entry = { url: out.url, prompt: text, scene: data.scene, understood: data.understood, ignored: data.ignored, notes: data.notes, seconds: out.seconds };
+    show(entry); addHistory(entry);
+    say("");
+    $("frame").scrollIntoView({ behavior: "smooth", block: "nearest" });
+  } catch (e) {
+    say(e.message || "Could not reach the server. Check your connection and try again.", true);
+  } finally { setBusy(false); }
+}
+
+async function renderEditor() {
+  if (busy) return;
+  const scene = $("sceneText").value;
+  $("sceneMsg").textContent = ""; $("sceneMsg").className = "msg";
+  if (!scene.trim()) { $("sceneMsg").textContent = "The scene file is empty. Pick an example or write a scene."; $("sceneMsg").className = "msg err"; return; }
+  try {
+    const out = await renderScene(scene);
+    const entry = { url: out.url, prompt: "Scene file", scene, understood: "scene file you edited", seconds: out.seconds };
+    $("pic").src = out.url; $("dl").href = out.url; $("dl").download = "sheepstealer.png"; $("dl").hidden = false;
+    showFacts(entry.understood, [], [], out.seconds); addHistory(entry);
+    $("sceneMsg").textContent = "Rendered in " + out.seconds + " s.";
+    $("frame").scrollIntoView({ behavior: "smooth", block: "center" });
+  } catch (e) {
+    $("sceneMsg").textContent = e.message; $("sceneMsg").className = "msg err";
+  } finally { setBusy(false); }
+}
+
+function insertWord(word) {
+  const t = $("prompt"); const a = t.selectionStart ?? t.value.length, b = t.selectionEnd ?? a;
+  const before = t.value.slice(0, a), after = t.value.slice(b);
+  const pre = before && !/\s$/.test(before) ? " " : "", post = after && !/^\s/.test(after) ? " " : "";
+  t.value = before + pre + word + post + after;
+  const pos = (before + pre + word + post).length; t.focus(); t.setSelectionRange(pos, pos);
+}
+function addObject(title, key) {
+  const t = $("prompt").value.trim();
+  $("prompt").value = t ? t.replace(/[.,]+$/, "") + " and a " + title.toLowerCase() : "a " + title.toLowerCase();
+  say("Added " + title.toLowerCase() + ". Press Render when you are ready.");
+}
+
+$("form").addEventListener("submit", (e) => { e.preventDefault(); generate($("prompt").value); });
+$("prompt").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); generate($("prompt").value); } });
+$("goScene").addEventListener("click", renderEditor);
+$("editScene").addEventListener("click", () => { $("scene").scrollIntoView({ behavior: "smooth" }); });
+$("example").addEventListener("change", () => {
+  const i = $("example").value; $("sceneText").value = i === "" ? lastScene : examples[Number(i)].scene;
 });
 
-async function render() {
-  const [w, h] = $('size').value.split('x').map(Number);
-  $('go').disabled = true;
-  $('error').textContent = '';
-  $('status').textContent = 'Rendering...';
-  const started = performance.now();
-  try {
-    const res = await fetch('/api/render', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ scene: $('scene').value, width: w, height: h, spp: Number($('quality').value) })
-    });
-    if (!res.ok) {
-      let msg = 'Render failed (' + res.status + ').';
-      try { msg = (await res.json()).error || msg; } catch (e) {}
-      $('error').textContent = msg;
-      $('status').textContent = 'Fix the scene and try again.';
-      return;
-    }
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    $('pic').src = url;
-    $('dl').href = url;
-    $('dl').style.display = 'inline-block';
-    $('status').textContent = 'Done in ' + ((performance.now() - started) / 1000).toFixed(1) + ' s';
-  } catch (e) {
-    $('error').textContent = 'Could not reach the server.';
-    $('status').textContent = '';
-  } finally {
-    $('go').disabled = false;
-  }
-}
+SUGGESTIONS.forEach(s => {
+  const b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.textContent = s;
+  b.addEventListener("click", () => { $("prompt").value = s; generate(s); });
+  $("suggest").appendChild(b);
+});
+SCENE_WORDS.forEach(w => {
+  const b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.textContent = w;
+  b.addEventListener("click", () => insertWord(w));
+  $("sceneWords").appendChild(b);
+});
 
-$('go').addEventListener('click', render);
-loadExamples();
+async function boot() {
+  try {
+    const [o, ex, hero] = await Promise.all([fetch("/api/objects"), fetch("/api/examples"), fetch("/img/hero.txt")]);
+    const od = await o.json();
+    od.objects.forEach(obj => {
+      const b = document.createElement("button"); b.type = "button"; b.className = "card";
+      b.innerHTML = '<img loading="lazy" alt="" src="/img/obj/' + obj.key + '.jpg"><span></span>';
+      b.querySelector("span").textContent = obj.title;
+      b.addEventListener("click", () => { addObject(obj.title, obj.key); b.classList.add("added"); });
+      $("grid").appendChild(b);
+    });
+    Object.keys(od.colors).forEach(name => {
+      const rgb = od.colors[name].map(v => Math.round(Math.min(1, v) * 255));
+      const b = document.createElement("button"); b.type = "button"; b.className = "swatch";
+      b.innerHTML = '<i style="background:rgb(' + rgb.join(",") + ')"></i><span></span>'; b.querySelector("span").textContent = name;
+      b.addEventListener("click", () => insertWord(name));
+      $("colors").appendChild(b);
+    });
+    examples = await ex.json();
+    examples.forEach((e, i) => { const op = document.createElement("option"); op.value = i; op.textContent = e.name; $("example").appendChild(op); });
+    if (hero.ok) { lastScene = await hero.text(); $("sceneText").value = lastScene; }
+  } catch (e) { say("Could not load the object list. Reload the page.", true); }
+}
+boot();
 </script>
 </body>
 </html>

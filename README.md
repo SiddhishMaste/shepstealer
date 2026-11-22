@@ -1,9 +1,5 @@
 # SheepStealer Engine 1.0
 
-**Live demo:** https://sheepstealer.onrender.com
-(The free server sleeps when idle, so the first load can take about a minute.)
-
-
 A CPU ray tracer written in C++17. It reads a scene file and renders a PNG or PPM image.
 
 ## Build
@@ -59,3 +55,20 @@ Materials must be defined before the shapes that use them.
 | `scene.h` | scene file reader and checks |
 | `image_out.h` | gamma correction, PNG and PPM output |
 | `main.cpp` | command line |
+
+## Prompt to picture (web interface)
+
+The `server/` folder is a small Flask app. It turns a sentence into a scene file, runs the C++ engine on it
+and sends the picture back. The `web/` folder is the page.
+
+```
+python3 -m venv .venv && .venv/bin/pip install -r server/requirements.txt
+.venv/bin/python server/app.py        # then open http://127.0.0.1:8000
+```
+
+* `server/builder.py` has 39 object recipes (car, tree, ice cream, house, snowman, rocket, castle, ...) built from
+  the engine's shapes, and places them in a row with a floor, a background, lights and a camera.
+* `server/prompt.py` reads a sentence: objects, colours (26), counts, left/right/background, day/sunset/night,
+  and ground words such as grass, snow and sand. Words it does not know are reported back, not guessed.
+* New engine shapes: `box`, `cylinder`, `cone` and `ellipsoid` (with `half 1` for a dome) in `scenes/shapes.txt`.
+* Tests: `bash tests/run_tests.sh` (engine) and `python3 tests/test_prompt.py` (prompt reader and objects).
