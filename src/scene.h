@@ -152,7 +152,7 @@ inline const std::map<std::string, int>& optionSizes() {
         {"center", 3}, {"radius", 1}, {"point", 3}, {"normal", 3},
         {"v0", 3}, {"v1", 3}, {"v2", 3}, {"position", 3}, {"intensity", 1},
         {"material", 1}, {"file", 1}, {"offset", 3},
-        {"min", 3}, {"max", 3}, {"from", 3}, {"to", 3}, {"segments", 1}, {"turn", 1}, {"radii", 3}, {"half", 1},
+        {"min", 3}, {"max", 3}, {"from", 3}, {"to", 3}, {"segments", 1}, {"turn", 1}, {"radii", 3}, {"half", 1}, {"tube", 1}, {"axis", 3},
     };
     return sizes;
 }
@@ -276,16 +276,17 @@ void buildCone(const Vec3& from, const Vec3& apex, double radius, int n, double 
     }
 }
 
-// An ellipsoid (a sphere stretched by "radii"). With half = true only the upper
-// half is built, plus a flat bottom disc, which makes a dome.
+// An ellipsoid (a sphere stretched by "radii"). half = +1 builds only the upper half (a dome),
+// half = -1 only the lower half (a bowl). Either one gets a flat disc across the cut.
 template <class Emit>
-void buildEllipsoid(const Vec3& c, const Vec3& r, int n, bool half, Emit emit) {
+void buildEllipsoid(const Vec3& c, const Vec3& r, int n, int half, Emit emit) {
     const double PI = 3.14159265358979323846;
     int bands = std::max(4, n / 2);
-    if (half) bands = std::max(2, bands / 2);
-    double maxTheta = half ? PI / 2 : PI;
+    if (half != 0) bands = std::max(2, bands / 2);
+    double th0 = half < 0 ? PI / 2 : 0.0;
+    double th1 = half > 0 ? PI / 2 : PI;
     auto point = [&](int band, int k) {
-        double th = maxTheta * band / bands;
+        double th = th0 + (th1 - th0) * band / bands;
         double ph = 2.0 * PI * k / n;
         return Vec3(c.x + r.x * std::sin(th) * std::cos(ph), c.y + r.y * std::cos(th), c.z + r.z * std::sin(th) * std::sin(ph));
     };
@@ -293,12 +294,39 @@ void buildEllipsoid(const Vec3& c, const Vec3& r, int n, bool half, Emit emit) {
         for (int k = 0; k < n; k++) {
             int m = (k + 1) % n;
             Vec3 a0 = point(b, k), a1 = point(b, m), b0 = point(b + 1, k), b1 = point(b + 1, m);
-            if (b > 0) emit(a0, b1, a1);                    // skip the empty triangle at the top pole
-            if (half || b + 1 < bands) emit(a0, b0, b1);     // skip the empty triangle at the bottom pole
+            bool topPole = (b == 0 && th0 == 0.0), bottomPole = (b == bands - 1 && th1 == PI);
+            if (!topPole) emit(a0, b1, a1);          // skip the empty triangle at a pole
+            if (!bottomPole) emit(a0, b0, b1);
         }
     }
-    if (half)
-        for (int k = 0; k < n; k++) emit(c, point(bands, (k + 1) % n), point(bands, k));   // flat bottom
+    if (half != 0) {
+        int cut = half > 0 ? bands : 0;
+        for (int k = 0; k < n; k++) emit(c, point(cut, (k + 1) % n), point(cut, k));   // flat disc
+    }
+}
+
+// A torus (a ring or donut). "radius" is the distance from the centre to the middle of the tube,
+// "tube" is the radius of the tube, and "axis" is the direction the hole points in.
+template <class Emit>
+void buildTorus(const Vec3& c, const Vec3& axis, double major, double minor, int n, Emit emit) {
+    const double PI = 3.14159265358979323846;
+    int m = std::max(6, n / 3);
+    Vec3 w = axis.normalize();
+    Vec3 helper = std::fabs(w.y) < 0.9 ? Vec3(0, 1, 0) : Vec3(1, 0, 0);
+    Vec3 u = w.cross(helper).normalize();
+    Vec3 v = w.cross(u);
+    auto point = [&](int i, int j) {
+        double th = 2.0 * PI * (i % n) / n, ph = 2.0 * PI * (j % m) / m;
+        Vec3 dir = u * std::cos(th) + v * std::sin(th);
+        return c + dir * (major + minor * std::cos(ph)) + w * (minor * std::sin(ph));
+    };
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < m; j++) {
+            Vec3 p00 = point(i, j), p10 = point(i + 1, j), p01 = point(i, j + 1), p11 = point(i + 1, j + 1);
+            emit(p00, p10, p11);
+            emit(p00, p11, p01);
+        }
+    }
 }
 
 inline Scene loadScene(const std::string& path) {
@@ -465,12 +493,27 @@ inline Scene loadScene(const std::string& path) {
             a.allow({"center", "radii", "segments", "half", "material"});
             Vec3 rr = a.reqVec("radii");
             int n = int(a.num("segments", 36));
-            bool half = a.num("half", 0) != 0;
+            int half = int(a.num("half", 0));
             a.need(rr.x > 0 && rr.y > 0 && rr.z > 0, "ellipsoid: every radius must be greater than 0");
             a.need(n >= 6 && n <= 64, "ellipsoid: segments must be between 6 and 64 (got " + std::to_string(n) + ")");
             const Material& em = findMat(a);
             buildEllipsoid(a.reqVec("center"), rr, n, half, [&](const Vec3& p, const Vec3& q, const Vec3& s) {
                 addPrim(a, std::make_shared<Triangle>(p, q, s, em));
+            });
+
+        } else if (cmd == "torus") {
+            Args a = parseArgs(tok, 1, where);
+            a.allow({"center", "radius", "tube", "axis", "segments", "material"});
+            Vec3 ctr = a.reqVec("center");
+            double major = a.req("radius"), minor = a.req("tube");
+            Vec3 axis = a.has("axis") ? a.reqVec("axis") : Vec3(0, 1, 0);
+            int n = int(a.num("segments", 36));
+            a.need(major > 0 && minor > 0, "torus: radius and tube must be greater than 0");
+            a.need(axis.length() > 1e-9, "torus: axis must not be (0 0 0)");
+            a.need(n >= 6 && n <= 64, "torus: segments must be between 6 and 64 (got " + std::to_string(n) + ")");
+            const Material& tm = findMat(a);
+            buildTorus(ctr, axis, major, minor, n, [&](const Vec3& p, const Vec3& q, const Vec3& s) {
+                addPrim(a, std::make_shared<Triangle>(p, q, s, tm));
             });
 
         } else if (cmd == "obj") {

@@ -17,6 +17,10 @@ COLORS = {
     "beige": (0.90, 0.80, 0.62), "peach": (1.0, 0.75, 0.60), "cream": (0.97, 0.93, 0.80),
     "white": (0.95, 0.95, 0.95), "grey": (0.55, 0.55, 0.58), "silver": (0.80, 0.82, 0.85),
     "black": (0.08, 0.08, 0.09), "gold": (0.95, 0.75, 0.20),
+    # Halloween update
+    "slime": (0.45, 0.95, 0.15), "ember": (1.0, 0.35, 0.05), "plum": (0.35, 0.12, 0.45),
+    "ink": (0.06, 0.05, 0.16), "blood": (0.55, 0.02, 0.05), "bone": (0.93, 0.90, 0.80),
+    "frost": (0.85, 0.95, 1.0), "rust": (0.65, 0.30, 0.12),
 }
 COLOR_ALIASES = {"gray": "grey", "golden": "gold", "rose": "pink", "violet": "violet",
                  "aqua": "cyan", "tan": "beige", "indigo": "navy", "scarlet": "red",
@@ -91,8 +95,15 @@ class Pen:
         self.sw.shape_lines.append("cone from %s to %s radius %s segments %d%s material %s"
                                    % (vec(self.P(a)), vec(self.P(b)), num(r * self.s), seg, t, mat))
 
-    def ell(self, c, radii, mat, half=False, seg=36):
-        h = " half 1" if half else ""
+    def tri(self, a, b, c, mat):
+        self.sw.shape_lines.append("triangle v0 %s v1 %s v2 %s material %s" % (vec(self.P(a)), vec(self.P(b)), vec(self.P(c)), mat))
+
+    def torus(self, c, major, minor, mat, axis=(0, 1, 0), seg=36):
+        self.sw.shape_lines.append("torus center %s radius %s tube %s axis %s segments %d material %s"
+                                   % (vec(self.P(c)), num(major * self.s), num(minor * self.s), vec(axis), seg, mat))
+
+    def ell(self, c, radii, mat, half=0, seg=36):
+        h = (" half %d" % (1 if half is True or half == 1 else -1)) if half else ""
         self.sw.shape_lines.append("ellipsoid center %s radii %s segments %d%s material %s"
                                    % (vec(self.P(c)), vec(tuple(v * self.s for v in radii)), seg, h, mat))
 
@@ -501,17 +512,12 @@ def pizza(p, col):
 def donut(p, col):
     import math
     col = col or COLORS["pink"]
-    dough, icing = p.m((.85, .6, .3), .15, 20), p.m(col, .6, 80)
+    p.torus((0, .45, 0), .95, .45, p.m((.85, .6, .3), .15, 20))
+    p.torus((0, .56, 0), .95, .4, p.m(col, .6, 80))
     spr = [p.m(c, .3) for c in ((1, 1, 1), (.2, .5, 1), (1, .85, .2), (.3, .8, .4))]
-    for k in range(24):
-        a = k * 2 * math.pi / 24
-        p.sphere((.95 * math.cos(a), .42, .95 * math.sin(a)), .42, dough)
-    for k in range(24):
-        a = k * 2 * math.pi / 24
-        p.sphere((.95 * math.cos(a), .56, .95 * math.sin(a)), .38, icing)
     for k in range(10):
         a = k * 2 * math.pi / 10 + .3
-        p.sphere((.95 * math.cos(a), .96, .95 * math.sin(a)), .06, spr[k % 4])
+        p.sphere((.95 * math.cos(a), .97, .95 * math.sin(a)), .06, spr[k % 4])
 
 
 @obj("ball", "Ball", ["ball", "sphere", "marble", "globe"], 2.0, 2.0, "red")
@@ -554,7 +560,176 @@ def cat(p, col):
     p.cyl((.2, .3, -.7), (.9, 1.7, -.8), .12, f, seg=14); p.sphere((.9, 1.7, -.8), .12, f)
 
 
+# ---------------------------------------------------------------- Halloween update objects
+@obj("ghost", "Ghost", ["ghost", "spook", "phantom"], 2.2, 3.2, "frost")
+def ghost(p, col):
+    import math
+    col = col or (.96, .97, 1.0)
+    w, dark = p.m(col, .2, 30), p.m(BLACK, .4, 50)
+    p.cyl((0, .45, 0), (0, 1.7, 0), .85, w); p.ell((0, 1.7, 0), (.85, .95, .85), w, half=True)
+    for k in range(7):
+        a = k * 2 * math.pi / 7
+        p.sphere((.62 * math.cos(a), .45, .62 * math.sin(a)), .32, w)
+    p.ell((0, .45, 0), (.7, .2, .7), w)
+    for sx in (-1, 1):
+        p.ell((sx * .32, 1.95, .8), (.13, .22, .1), dark); p.ell((sx * 1.0, 1.35, .15), (.2, .4, .2), w)
+    p.ell((0, 1.4, .84), (.14, .2, .08), dark)
+
+
+@obj("jackolantern", "Jack-o'-lantern", ["jackolantern", "jacko"], 2.6, 2.1, "orange")
+def jackolantern(p, col):
+    col = col or COLORS["orange"]
+    o = p.m(col, .3, 40)
+    p.ell((0, .85, 0), (1.15, .85, 1.1), o); p.ell((-.55, .85, .2), (.7, .82, .85), o); p.ell((.55, .85, .2), (.7, .82, .85), o)
+    p.cyl((0, 1.65, 0), (0, 2.1, 0), .13, p.m((.25, .5, .15), .1), seg=10)
+
+    def sz(x, y):   # the pumpkin surface in front; the glowing face sits flat just on it
+        return 1.1 * max(0.0, 1 - (x / 1.15) ** 2 - ((y - .85) / .85) ** 2) ** .5
+
+    def flat(pts, z):
+        return [(x, y, z) for x, y in pts]
+    glow = p.m((1.0, .82, .2), .0, 1)
+    for sx in (-1, 1):
+        p.tri(*flat([(sx * .5 - .3, .95), (sx * .5 + .3, .95), (sx * .5, 1.5)], sz(sx * .5, 1.1) + .1), glow)
+    p.tri(*flat([(-.16, .66), (.16, .66), (0, .92)], sz(0, .75) + .1), glow)
+    xs = [-.6, -.4, -.2, 0, .2, .4, .6]
+    for a_, b_ in zip(xs, xs[1:]):
+        top = .6 - .1 * abs((a_ + b_) / 2) / .6
+        bot = top - .3 + .12 * abs((a_ + b_) / 2) / .6
+        v = flat([(a_, top), (b_, top), (b_, bot), (a_, bot)], 0)
+        z = min(sz(x, y) for x, y, _ in v) + .06
+        v = [(x, y, z) for x, y, _ in v]
+        p.tri(v[0], v[1], v[2], glow); p.tri(v[0], v[2], v[3], glow)
+
+
+@obj("witchhat", "Witch hat", ["witchhat", "witchshat", "wizardhat", "hat"], 3.2, 2.5, "black")
+def witchhat(p, col):
+    col = col or (.1, .07, .14)
+    h, band, gold = p.m(col, .3, 40), p.m((.55, .2, .7), .3, 40), p.m((.95, .75, .2), .8, 90)
+    p.cyl((0, 0, 0), (0, .14, 0), 1.55, h); p.cone((0, .14, 0), (0, 2.5, 0), .88, h)
+    p.cyl((0, .14, 0), (0, .5, 0), .85, band)
+    p.box((-.22, .17, .8), (.22, .47, .9), gold)
+    p.cone((0, 2.2, 0), (.5, 2.55, 0), .14, h, seg=14)
+
+
+@obj("skull", "Skull", ["skull", "skeleton"], 2.2, 2.4, "bone")
+def skull(p, col):
+    col = col or COLORS["bone"]
+    b, dark, tooth = p.m(col, .15, 20), p.m((.05, .04, .05), .1), p.m(lighter(col, .3), .2, 30)
+    p.ell((0, 1.4, 0), (1.0, .95, .95), b); p.ell((0, .6, .12), (.62, .5, .62), b)
+    for sx in (-1, 1):
+        p.ell((sx * .38, 1.4, .82), (.28, .34, .25), dark)
+    p.ell((0, 1.0, .9), (.1, .17, .1), dark)
+    for k in range(5):
+        p.box((-.4 + k * .2 - .07, .22, .62), (-.4 + k * .2 + .07, .5, .72), tooth)
+
+
+@obj("tombstone", "Tombstone", ["tombstone", "gravestone", "headstone", "grave"], 2.8, 2.6, "grey")
+def tombstone(p, col):
+    col = col or (.55, .56, .6)
+    s, dark, dirt = p.m(col, .1, 16), p.m(darker(col, .45), .1), p.m((.22, .15, .1), .05)
+    p.box((-.95, 0, -.3), (.95, 1.5, .3), s); p.cyl((0, 1.5, -.3), (0, 1.5, .3), .95, s)
+    p.box((-.09, .6, .3), (.09, 1.75, .34), dark); p.box((-.42, 1.2, .3), (.42, 1.36, .34), dark)
+    p.ell((0, 0, 1.0), (1.2, .32, .75), dirt, half=True)
+
+
+@obj("bat", "Bat", ["bat"], 4.0, 3.2, "black")
+def bat(p, col):
+    col = col or (.1, .08, .12)
+    b, red = p.m(col, .3, 40), p.m((1, .15, .1), .6, 60)
+    p.ell((0, 1.5, 0), (.38, .5, .32), b); p.sphere((0, 2.05, 0), .27, b)
+    for sx in (-1, 1):
+        p.cone((sx * .15, 2.25, 0), (sx * .22, 2.7, 0), .1, b, seg=10); p.sphere((sx * .1, 2.1, .22), .045, red)
+        pts = [(.3, 1.8), (1.9, 2.4), (1.55, 1.7), (1.1, 1.8), (.7, 1.45), (.3, 1.2)]
+        for i in range(len(pts) - 1):
+            p.tri((sx * pts[i][0], pts[i][1], 0), (sx * pts[i + 1][0], pts[i + 1][1], 0), (sx * .25, 1.8, 0), b)
+
+
+@obj("spider", "Spider", ["spider"], 4.0, 1.9, "black")
+def spider(p, col):
+    col = col or BLACK
+    b, red = p.m(col, .5, 70), p.m((.9, .1, .1), .6, 60)
+    p.sphere((0, .95, -.1), .55, b); p.sphere((0, .95, .6), .33, b)
+    for sx in (-.1, .1):
+        p.sphere((sx, 1.05, .87), .07, red); p.sphere((sx * 2.4, 1.0, .86), .06, red)
+    for sx in (-1, 1):
+        for zo in (-.55, -.2, .15, .5):
+            p.cyl((sx * .4, .95, zo * .5), (sx * 1.3, 1.6, zo * 1.3), .05, b, seg=8)
+            p.cyl((sx * 1.3, 1.6, zo * 1.3), (sx * 1.9, 0.02, zo * 1.7), .05, b, seg=8)
+
+
+@obj("cauldron", "Cauldron", ["cauldron"], 3.2, 2.5, "black")
+def cauldron(p, col):
+    col = col or (.1, .1, .12)
+    iron, brew, flame = p.m(col, .5, 60), p.m((.35, .95, .2), .8, 90), p.m((1, .55, .1), .2, 20)
+    p.ell((0, 1.5, 0), (1.3, 1.2, 1.3), iron, half=-1)
+    p.torus((0, 1.5, 0), 1.3, .13, iron)
+    p.cyl((0, 1.5, 0), (0, 1.56, 0), 1.25, brew)
+    for x, y, z, r in ((.4, 1.75, .2, .22), (-.5, 1.7, -.2, .17), (.1, 1.8, -.5, .14)):
+        p.sphere((x, y, z), r, brew)
+    for sx in (-1, 1):
+        p.torus((sx * 1.35, 1.1, 0), .2, .05, iron, axis=(1, 0, 0), seg=16)
+        p.sphere((sx * .7, .1, .5), .22, iron)
+    p.sphere((0, .1, -.8), .22, iron)
+    for k in (-.5, 0, .5):
+        p.cone((k, .01, 1.45), (k, .6, 1.45), .15, flame, seg=10)
+
+
+@obj("candle", "Candle", ["candle"], 1.8, 2.4, "bone")
+def candle(p, col):
+    col = col or (.95, .9, .78)
+    wax, gold = p.m(col, .2, 30), p.m((.95, .75, .2), .8, 90)
+    p.cyl((0, 0, 0), (0, .12, 0), .85, gold); p.cyl((0, .12, 0), (0, 1.6, 0), .45, wax)
+    for a, h in ((.3, .4), (-.35, .6), (.05, .3)):
+        p.ell((a, 1.55, .4 if a else .44), (.1, h * .5, .08), wax)
+    p.cyl((0, 1.6, 0), (0, 1.8, 0), .03, p.m(BLACK, .1))
+    p.sphere((0, 1.95, 0), .15, p.m((1, .85, .3), .1, 10)); p.cone((0, 1.9, 0), (0, 2.4, 0), .15, p.m((1, .55, .1), .1, 10), seg=14)
+
+
+@obj("hauntedhouse", "Haunted house", ["hauntedhouse", "mansion"], 5.4, 5.2, "plum")
+def hauntedhouse(p, col):
+    col = col or (.28, .2, .34)
+    wall, roof, glow, door = p.m(col, .1, 20), p.m((.1, .08, .12), .2, 30), p.m((1, .8, .2), .0, 1), p.m((.1, .06, .05), .1)
+    p.box((-1.5, 0, -1.2), (1.5, 2.4, 1.2), wall); p.cone((0, 2.4, 0), (0, 4.0, 0), 2.4, roof, seg=4, turn=45)
+    p.cyl((-1.9, 0, .2), (-1.9, 3.5, .2), .75, wall); p.cone((-1.9, 3.5, .2), (-1.9, 5.1, .2), 1.0, roof)
+    p.box((-.4, 0, 1.2), (.4, 1.3, 1.26), door)
+    for x in (-1.0, .75):
+        p.box((x, 1.3, 1.2), (x + .4, 2.0, 1.26), glow)
+    p.box((1.0, 2.7, -.3), (1.35, 3.8, .05), wall)
+    p.sphere((-1.9, 2.4, .92), .22, glow)
+
+
+@obj("candycorn", "Candy corn", ["candycorn"], 2.2, 2.4, "yellow")
+def candycorn(p, col):
+    col = col or COLORS["yellow"]
+    p.cone((0, 0, 0), (0, 2.3, 0), 1.1, p.m(col, .3, 40), seg=3, turn=90)
+    p.cone((0, .85, 0), (0, 2.32, 0), .70 + .02, p.m((1, .5, .05), .3, 40), seg=3, turn=90)
+    p.cone((0, 1.6, 0), (0, 2.34, 0), .33 + .03, p.m((.97, .97, .95), .3, 40), seg=3, turn=90)
+
+
+@obj("broomstick", "Broomstick", ["broomstick", "broom"], 1.8, 4.0, "brown")
+def broomstick(p, col):
+    col = col or WOOD
+    p.cyl((0, .9, 0), (0, 3.9, 0), .07, p.m(col, .2, 30), seg=10)
+    p.cone((0, 0, 0), (0, 1.4, 0), .75, p.m((.8, .6, .25), .1, 16), seg=20)
+    p.cyl((0, .95, 0), (0, 1.12, 0), .24, p.m((.25, .15, .1), .1))
+    p.sphere((0, 3.95, 0), .1, p.m(col, .2, 30))
+
+
+@obj("moon", "Moon", ["moon"], 3.4, 4.6, "cream")
+def moon(p, col):
+    col = col or (.98, .95, .75)
+    m, crater = p.m(col, .1, 16), p.m(darker(col, .82), .1, 16)
+    p.sphere((0, 3.2, 0), 1.6, m)
+    for x, y, r in ((-.5, 3.6, .3), (.6, 2.8, .4), (.2, 3.9, .2), (-.8, 2.7, .25)):
+        p.ell((x, y, 1.5), (r, r, r * .25), crater)
+
+
+NEW_KEYS = ["ghost", "jackolantern", "witchhat", "skull", "tombstone", "bat", "spider", "cauldron",
+            "candle", "hauntedhouse", "candycorn", "broomstick", "moon"]
+
 UI_GROUPS = {
+    "Halloween": NEW_KEYS,
     "Animals": ["teddy", "bunny", "cat", "duck", "penguin"],
     "Food": ["icecream", "cupcake", "cake", "pizza", "donut", "apple", "lollipop"],
     "Buildings": ["house", "castle", "lighthouse", "windmill", "igloo", "tent"],
@@ -566,13 +741,17 @@ UI_GROUPS = {
 
 def object_list():
     group_of = {k: g for g, keys in UI_GROUPS.items() for k in keys}
-    return [dict(key=o["key"], title=o["title"], default=o["default"], group=group_of.get(o["key"], "Toys and fun"))
-            for o in OBJECTS.values()]
+    order = list(UI_GROUPS)
+    rows = [dict(key=o["key"], title=o["title"], default=o["default"], new=o["key"] in NEW_KEYS,
+                 group=group_of.get(o["key"], "Toys and fun")) for o in OBJECTS.values()]
+    rows.sort(key=lambda r: order.index(r["group"]))      # Halloween first, the rest keep their order
+    return rows
 
 
 # ---------------------------------------------------------------- composing a scene
 DAY = dict(top=(0.42, 0.64, 0.95), bottom=(0.95, 0.97, 1.0), floor=(0.84, 0.87, 0.9), check=(0.77, 0.80, 0.85))
 SUNSET = dict(top=(0.30, 0.22, 0.58), bottom=(1.0, 0.62, 0.36), floor=(0.62, 0.45, 0.42), check=(0.55, 0.40, 0.38))
+SPOOKY = dict(top=(0.10, 0.03, 0.22), bottom=(0.96, 0.42, 0.08), floor=(0.22, 0.15, 0.30), check=(0.16, 0.10, 0.24))
 NIGHT = dict(top=(0.01, 0.02, 0.10), bottom=(0.10, 0.13, 0.32), floor=(0.13, 0.15, 0.22), check=(0.10, 0.12, 0.18))
 
 MAX_OBJECTS = 24
@@ -614,7 +793,7 @@ def compose(items, sky=None, floor_color=None, mood="day", width=640, height=360
         pen = Pen(sw, pl["x"], pl["z"], pl["s"])
         OBJECTS[pl["key"]]["fn"](pen, pl["color"])
 
-    base = {"day": DAY, "sunset": SUNSET, "night": NIGHT}.get(mood, DAY)
+    base = {"day": DAY, "sunset": SUNSET, "night": NIGHT, "spooky": SPOOKY}.get(mood, DAY)
     look = sky_from_color(sky) if sky else base
     floor_mat = None
     ymax = max([OBJECTS[p["key"]]["height"] * p["s"] for p in placed] or [3.0])
@@ -626,10 +805,10 @@ def compose(items, sky=None, floor_color=None, mood="day", width=640, height=360
     eye = (cx + dist * 0.12, ymax * 0.5 + 1.6, dist)
     look_at = (cx, ymax * 0.42, -1.5 if has_back else 0.0)
 
-    night, sunset = mood == "night", mood == "sunset"
-    ambient = 0.09 if night else (0.17 if sunset else 0.22)
-    key_col = (0.55, 0.6, 1.0) if night else ((1.0, 0.72, 0.5) if sunset else (1.0, 1.0, 1.0))
-    key_int = 0.55 if night else 1.0
+    night, sunset, spooky = mood == "night", mood == "sunset", mood == "spooky"
+    ambient = 0.09 if night else (0.13 if spooky else (0.17 if sunset else 0.22))
+    key_col = (0.55, 0.6, 1.0) if night else ((1.0, 0.62, 0.28) if spooky else ((1.0, 0.72, 0.5) if sunset else (1.0, 1.0, 1.0)))
+    key_int = 0.55 if night else (0.9 if spooky else 1.0)
 
     lines = ["# Generated by the SheepStealer prompt reader.",
              "settings width %d height %d spp %d depth 5 ambient %s seed 7" % (width, height, spp, num(ambient)),
@@ -643,5 +822,6 @@ def compose(items, sky=None, floor_color=None, mood="day", width=640, height=360
     lines += sw.mat_lines + [floor_def, "", "plane point 0 0 0 normal 0 1 0 material floor", ""]
     lines += sw.shape_lines + [""]
     lines += ["light position %s intensity %s color %s" % (vec((cx - 6, 9 + ymax, dist * 0.9)), num(key_int), vec(key_col)),
-              "light position %s intensity 0.4 color %s" % (vec((cx + 9, 5, dist * 0.6)), vec(mix(key_col, (1, 1, 1), .4)))]
+              "light position %s intensity %s color %s" % (vec((cx + 9, 5, dist * 0.6)), "0.55" if spooky else "0.4",
+                                                       vec((0.55, 0.4, 1.0) if spooky else mix(key_col, (1, 1, 1), .4)))]
     return "\n".join(lines) + "\n", placed

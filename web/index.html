@@ -4,22 +4,34 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>SheepStealer Engine</title>
+<script>try{if(localStorage.getItem("sheep-theme")==="classic")document.documentElement.dataset.theme="classic";}catch(e){}</script>
 <meta name="description" content="Type a scene and a C++ ray tracer draws it.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;600&family=Pirata+One&display=swap" rel="stylesheet">
 <style>
   :root {
-    --paper: #f2f0fb; --surface: #ffffff; --ink: #1d1b34; --muted: #625f86; --line: #d9d5ee;
-    --blue: #3b5bff; --blue-ink: #ffffff; --soft: #e8e5f8; --warn: #8a4b00; --warn-bg: #fff1d6; --bad: #b3261e;
-    --shadow: 0 8px 28px rgba(29, 27, 52, .12);
-    --tint: 190, 205, 245;
-    --display: "Bricolage Grotesque", "Trebuchet MS", system-ui, sans-serif;
+    /* Halloween look (default) */
+    --paper: #130a1f; --surface: #1e1230; --ink: #f4ead5; --muted: #b3a2cc; --line: #3a2358;
+    --blue: #ff7a1a; --blue-ink: #1a0b00; --soft: #2a1a42; --warn: #ffd08a; --warn-bg: #3b2410; --bad: #ff8a80;
+    --slime: #8ae234; --glow: 0 0 22px rgba(255, 122, 26, .35);
+    --shadow: 0 8px 28px rgba(0, 0, 0, .55);
+    --tint: 60, 30, 80;
+    --display: "Pirata One", "Bricolage Grotesque", Georgia, serif;
+    --head: "Bricolage Grotesque", "Trebuchet MS", system-ui, sans-serif;
     --body: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
     --navh: 64px;
   }
+  :root[data-theme="classic"] {
+    --paper: #f2f0fb; --surface: #ffffff; --ink: #1d1b34; --muted: #625f86; --line: #d9d5ee;
+    --blue: #3b5bff; --blue-ink: #ffffff; --soft: #e8e5f8; --warn: #8a4b00; --warn-bg: #fff1d6; --bad: #b3261e;
+    --slime: #3b5bff; --glow: none;
+    --shadow: 0 8px 28px rgba(29, 27, 52, .12);
+    --tint: 190, 205, 245;
+    --display: "Bricolage Grotesque", "Trebuchet MS", system-ui, sans-serif;
+  }
   @media (prefers-color-scheme: dark) {
-    :root {
+    :root[data-theme="classic"] {
       --paper: #14122b; --surface: #1e1b3d; --ink: #ece9ff; --muted: #a29fc9; --line: #35316a;
       --blue: #7d91ff; --blue-ink: #10102a; --soft: #2a2655; --warn: #ffd08a; --warn-bg: #3b2c10; --bad: #ff8a80;
       --shadow: 0 8px 28px rgba(0, 0, 0, .45);
@@ -38,7 +50,7 @@
   /* top bar and navigation */
   .bar { position: sticky; top: 0; z-index: 20; background: color-mix(in srgb, var(--paper) 88%, transparent); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
   .bar .wrap { display: flex; align-items: center; justify-content: space-between; height: var(--navh); gap: 16px; }
-  .brand { display: flex; align-items: center; gap: 10px; font: 700 1.2rem var(--display); text-decoration: none; }
+  .brand { display: flex; align-items: center; gap: 10px; font: 400 1.6rem var(--display); text-decoration: none; }
   .brand svg { width: 30px; height: 30px; flex: none; }
   .tabs { display: flex; gap: 4px; }
   .tab { display: flex; align-items: center; gap: 8px; text-decoration: none; padding: 8px 14px; border-radius: 999px; color: var(--muted); font-weight: 600; }
@@ -50,14 +62,14 @@
 
   main { padding: 28px 0 60px; }
   .view { animation: none; }
-  h1 { font: 700 clamp(1.9rem, 4.2vw, 2.8rem)/1.08 var(--display); letter-spacing: -.02em; margin: 0 0 8px; max-width: 24ch; }
-  h2.title { font: 700 clamp(1.5rem, 3vw, 2.1rem)/1.15 var(--display); margin: 0 0 6px; letter-spacing: -.01em; }
-  h3 { font: 700 1.1rem var(--display); margin: 0 0 8px; }
+  h1 { font: 400 clamp(2.3rem, 5.4vw, 3.5rem)/1.02 var(--display); letter-spacing: .01em; text-shadow: var(--glow); margin: 0 0 8px; max-width: 24ch; }
+  h2.title { font: 400 clamp(1.9rem, 3.6vw, 2.6rem)/1.1 var(--display); margin: 0 0 6px; }
+  h3 { font: 700 1.1rem var(--head); margin: 0 0 8px; }
   .lead { margin: 0 0 18px; color: var(--muted); max-width: 60ch; font-size: 1.05rem; }
   .msg { min-height: 1.6em; margin: 10px 4px 0; font-weight: 600; }
   .msg.err { color: var(--bad); }
 
-  .btn { background: var(--blue); color: var(--blue-ink); border: 0; border-radius: 14px; padding: 13px 26px; font: 700 1.05rem var(--display); }
+  .btn { background: var(--blue); color: var(--blue-ink); border: 0; border-radius: 14px; padding: 13px 26px; font: 400 1.3rem var(--display); letter-spacing: .02em; box-shadow: var(--glow); }
   .btn:hover { filter: brightness(1.08); }
   .btn:disabled, .soft:disabled { opacity: .55; cursor: progress; }
   .soft { display: block; text-align: center; text-decoration: none; background: var(--soft); border: 0; border-radius: 12px; padding: 10px 14px; font-weight: 600; }
@@ -73,7 +85,7 @@
   /* create page */
   .prompt { display: flex; gap: 10px; background: var(--surface); border: 2px solid var(--line); border-radius: 22px; padding: 10px 10px 10px 18px; align-items: flex-end; }
   .prompt:focus-within { border-color: var(--blue); }
-  .prompt textarea { flex: 1; border: 0; background: transparent; resize: none; outline: none; font: 500 clamp(1.15rem, 2.4vw, 1.5rem)/1.3 var(--display); padding: 8px 0; min-height: 2.7em; }
+  .prompt textarea { flex: 1; border: 0; background: transparent; resize: none; outline: none; font: 500 clamp(1.15rem, 2.4vw, 1.5rem)/1.3 var(--head); padding: 8px 0; min-height: 2.7em; }
   .prompt textarea::placeholder { color: var(--muted); opacity: .7; }
   .stage { margin-top: 18px; display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 18px; align-items: start; }
   .frame { position: relative; border-radius: 28px; overflow: hidden; background: rgb(var(--tint)); padding: clamp(10px, 2.4vw, 26px); transition: background-color .6s ease; }
@@ -139,20 +151,52 @@
   .pipeline { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin: 0 0 34px; counter-reset: s; }
   .pipe { position: relative; background: var(--surface); border: 1.5px solid var(--line); border-radius: 16px; padding: 14px; }
   .pipe:not(:last-child)::after { content: ""; position: absolute; right: -9px; top: 50%; width: 8px; height: 8px; border-top: 2px solid var(--blue); border-right: 2px solid var(--blue); transform: translateY(-50%) rotate(45deg); }
-  .pipe b { display: block; font: 700 1rem var(--display); }
+  .pipe b { display: block; font: 700 1rem var(--head); }
   .pipe span { color: var(--muted); font-size: .9rem; }
   .facts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 34px; }
   .fact { background: var(--surface); border: 1.5px solid var(--line); border-radius: 16px; padding: 14px 16px; }
-  .fact b { display: block; font: 700 1.8rem/1.1 var(--display); }
+  .fact b { display: block; font: 400 2.2rem/1.1 var(--display); color: var(--blue); }
   .fact span { color: var(--muted); font-size: .92rem; }
   .two { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
   .plainlist { margin: 0 0 24px; padding-left: 1.2em; }
   .plainlist li { margin: 4px 0; }
   table { border-collapse: collapse; width: 100%; background: var(--surface); border-radius: 14px; overflow: hidden; border: 1.5px solid var(--line); }
   th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); }
-  th { background: var(--soft); font-family: var(--display); }
+  th { background: var(--soft); font-family: var(--head); }
   tr:last-child td { border-bottom: 0; }
 
+
+  /* Halloween extras */
+  .bar .wrap { gap: 10px; }
+  .ver { text-decoration: none; background: var(--slime); color: #0c1a00; font: 700 .78rem var(--head); border-radius: 999px; padding: 4px 10px; white-space: nowrap; }
+  :root[data-theme="classic"] .ver { color: #fff; }
+  .themebtn { border: 1.5px solid var(--line); background: var(--surface); border-radius: 999px; padding: 6px 12px; font-size: .85rem; font-weight: 600; white-space: nowrap; }
+  .themebtn:hover { border-color: var(--blue); }
+  .right { display: flex; align-items: center; gap: 8px; }
+  .event { position: relative; display: flex; gap: 14px; align-items: center; background: linear-gradient(100deg, #3a1560, #7a2d00); border: 1.5px solid var(--blue); border-radius: 18px; padding: 14px 44px 14px 18px; margin: 0 0 20px; color: #f4ead5; box-shadow: var(--glow); }
+  .event svg { width: 44px; height: 44px; flex: none; }
+  .event b { font: 400 1.5rem var(--display); display: block; line-height: 1.1; }
+  .event span { font-size: .95rem; }
+  .event a { color: #ffd08a; font-weight: 600; }
+  .event button { position: absolute; top: 6px; right: 8px; border: 0; background: none; font-size: 1.5rem; line-height: 1; color: inherit; padding: 4px 8px; }
+  :root[data-theme="classic"] .event, :root[data-theme="classic"] .halloween-only { display: none; }
+  .hero-wrap { position: relative; }
+  .bats { position: absolute; right: 0; top: -6px; width: 150px; height: 70px; opacity: .55; pointer-events: none; color: var(--blue); }
+  :root[data-theme="classic"] .bats { display: none; }
+  .tag { position: absolute; top: 8px; left: 8px; background: var(--slime); color: #0c1a00; border-radius: 999px; font: 700 .72rem var(--head); padding: 2px 8px; }
+  .card { background: var(--surface); }
+  .frame { box-shadow: var(--glow); }
+  .notes { display: grid; gap: 16px; margin-bottom: 34px; }
+  .note { background: var(--surface); border: 1.5px solid var(--line); border-radius: 20px; padding: 20px 22px; }
+  .note.latest { border-color: var(--blue); box-shadow: var(--glow); }
+  .note header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin-bottom: 8px; }
+  .note h3 { font: 400 1.7rem var(--display); margin: 0; }
+  .note time { color: var(--muted); font-size: .92rem; }
+  .note .badge { background: var(--slime); color: #0c1a00; font: 700 .75rem var(--head); border-radius: 999px; padding: 2px 9px; }
+  .note h4 { margin: 14px 0 4px; font: 700 .98rem var(--head); color: var(--blue); }
+  .note ul { margin: 0; padding-left: 1.2em; }
+  .note li { margin: 2px 0; }
+  .note.old summary { cursor: pointer; font: 400 1.5rem var(--display); }
   .toast { position: fixed; left: 50%; bottom: 92px; transform: translateX(-50%); background: var(--ink); color: var(--paper); padding: 10px 18px; border-radius: 999px; font-weight: 600; box-shadow: var(--shadow); z-index: 40; max-width: calc(100vw - 32px); }
   .foot { margin: 56px 0 0; color: var(--muted); font-size: .95rem; max-width: 70ch; }
 
@@ -169,6 +213,11 @@
     .bar { backdrop-filter: none; background: var(--paper); }
     .bar .wrap { height: 54px; }
     .code-link { display: none; }
+    .themebtn { padding: 5px 10px; font-size: .78rem; }
+    .brand { font-size: 1.35rem; }
+    .bats { width: 90px; height: 42px; }
+    .event { padding-right: 36px; }
+    .event svg { display: none; }
     .tabs { position: fixed; left: 0; right: 0; bottom: 0; height: var(--navh); z-index: 30; background: var(--surface); border-top: 1px solid var(--line); justify-content: space-around; gap: 0; padding: 6px 4px; }
     .tab { flex-direction: column; gap: 2px; font-size: .72rem; padding: 6px 4px; border-radius: 12px; flex: 1; justify-content: center; }
     .tab svg { width: 22px; height: 22px; }
@@ -184,7 +233,7 @@
 <header class="bar">
   <div class="wrap">
     <a class="brand" href="#/create">
-      <svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="14" fill="#3b5bff"/><ellipse cx="11.5" cy="10.5" rx="4.5" ry="3" fill="#fff" opacity=".75" transform="rotate(-30 11.5 10.5)"/></svg>
+      <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3c-9 0-13 6-13 13s5 12 13 12 13-5 13-12S25 3 16 3z" fill="#ff7a1a"/><path d="M14 3.5c-3 4-3 20 0 25M18 3.5c3 4 3 20 0 25" stroke="#c24f00" stroke-width="1.4" fill="none"/><path d="M15.5 3.4l.4-3 3-.3-.5 3.4z" fill="#8ae234"/><path d="M9 14l3-3 1.5 3zM18.5 14l1.5-3 3 3zM11 20q5 4 10 0" fill="#1a0b00" stroke="#1a0b00" stroke-width="1.3"/></svg>
       SheepStealer
     </a>
     <nav class="tabs" aria-label="Pages" id="tabs">
@@ -194,7 +243,11 @@
       <a class="tab" href="#/scene" data-view="scene"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 7l-5 5 5 5"/><path d="M16 7l5 5-5 5"/><path d="M14 4l-4 16"/></svg>Scene file</a>
       <a class="tab" href="#/about" data-view="about"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v6"/><path d="M12 7.5v.01"/></svg>About</a>
     </nav>
-    <a class="code-link" href="https://github.com/SiddhishMaste/shepstealer">Code</a>
+    <div class="right">
+      <a class="ver" href="#/about" title="See the patch notes">Update 1.1</a>
+      <button class="themebtn" id="themeBtn" type="button"></button>
+      <a class="code-link" href="https://github.com/SiddhishMaste/shepstealer">Code</a>
+    </div>
   </div>
 </header>
 
@@ -202,10 +255,18 @@
 
   <!-- CREATE -->
   <section class="view" id="view-create" data-title="Create">
+    <div class="event" id="event" hidden>
+      <svg viewBox="0 0 64 64" aria-hidden="true"><path d="M32 6c-17 0-26 12-26 26s10 24 26 24 26-10 26-24S49 6 32 6z" fill="#ff7a1a"/><path d="M28 7c-6 8-6 42 0 50M36 7c6 8 6 42 0 50" stroke="#c24f00" stroke-width="2" fill="none"/><path d="M30 7l1-6 6-1-1 7z" fill="#8ae234"/><path d="M17 28l7-7 3 7zM37 28l3-7 7 7zM20 40q12 10 24 0" fill="#ffd34d" stroke="#ffd34d" stroke-width="2"/></svg>
+      <div><b>Update 1.1: Halloween</b><span>13 new objects, 8 new colours, a spooky look and graveyard ground. Try <a href="#/create" data-try="a haunted house and a moon in the background with 2 jack-o'-lanterns, a ghost and a tombstone, spooky">a haunted scene</a> or read the <a href="#/about">patch notes</a>.</span></div>
+      <button type="button" id="eventX" aria-label="Hide this message">&times;</button>
+    </div>
+    <div class="hero-wrap">
+    <svg class="bats" viewBox="0 0 150 70" aria-hidden="true" fill="currentColor"><path d="M20 30c8-8 14-6 18 2 3-4 6-4 9 0 4-8 10-10 18-2-5 0-8 3-10 8-3-3-5 0-7 5-2-5-4-8-7-5-2-5-5-8-21-8z" transform="translate(0 0)"/><path d="M95 12c6-6 10-4 13 2 2-3 5-3 7 0 3-6 7-8 13-2-4 0-6 2-8 6-2-2-4 0-5 4-1-4-3-6-5-4-2-4-4-6-15-6z"/><path d="M70 50c4-4 7-3 9 1 2-2 4-2 5 0 2-4 5-5 9-1-3 0-5 2-6 4-2-2-3 0-4 3-1-3-2-5-4-3-1-3-3-4-9-4z"/></svg>
     <h1>Type a scene, get a ray&#8209;traced picture</h1>
     <p class="lead">A C++ ray tracer draws every picture from simple shapes. Name some objects, pick colours and add a background.</p>
+    </div>
     <form class="prompt" id="form">
-      <textarea id="prompt" rows="2" maxlength="300" aria-label="Describe your scene" placeholder="a blue toy car with pink trees in the background">a blue toy car with pink trees in the background</textarea>
+      <textarea id="prompt" rows="2" maxlength="300" aria-label="Describe your scene" placeholder="a haunted house with a ghost and 2 jack-o'-lanterns, spooky">a haunted house and a moon in the background with 2 jack-o'-lanterns and a ghost, spooky</textarea>
       <button class="btn" id="go" type="submit">Render</button>
     </form>
     <p class="msg" id="msg" role="status"></p>
@@ -214,16 +275,16 @@
     <div class="stage">
       <div>
         <div class="frame" id="frame">
-          <img id="pic" src="/img/hero.jpg" alt="A blue toy car with pink trees behind it, drawn by the ray tracer">
+          <img id="pic" src="/img/hero.jpg" alt="A haunted house and full moon behind two jack-o'-lanterns, a ghost and a tombstone, drawn by the ray tracer">
           <div class="busy" id="busy"><p id="busyText">Reading your sentence</p></div>
         </div>
         <div class="history" id="history" aria-label="Earlier pictures"></div>
       </div>
       <aside class="panel">
         <h3>In this picture</h3>
-        <ul id="understood"><li>blue toy car</li><li>3 pink trees (background)</li></ul>
+        <ul id="understood"><li>haunted house (background)</li><li>moon (background)</li><li>2 jack-o'-lanterns</li><li>ghost</li><li>spooky look</li></ul>
         <div class="skipped" id="skipped" hidden></div>
-        <p class="time" id="time">Sample picture made by the engine.</p>
+        <p class="time" id="time">Sample picture made by the engine (Halloween update).</p>
         <div class="settings">
           <label>Size
             <select class="sel-size"><option value="480x270">Small</option><option value="640x360" selected>Medium</option><option value="960x540">Large</option></select></label>
@@ -261,13 +322,13 @@
     <p class="lead">Name the things you want, put a colour in front of each, then say where they stand and what is behind them. Press an example to render it.</p>
     <div class="steps">
       <div class="step"><h3>Pick objects</h3><p>Use the names from the gallery. Add a number for more than one.</p>
-        <button class="chip" data-try="a car and a tree">a car and a tree</button><button class="chip" data-try="5 penguins">5 penguins</button></div>
+        <button class="chip" data-try="a ghost and a skull">a ghost and a skull</button><button class="chip" data-try="5 bats">5 bats</button></div>
       <div class="step"><h3>Add colours</h3><p>A colour goes right before the object it describes.</p>
-        <button class="chip" data-try="a red house and a blue car">a red house and a blue car</button><button class="chip" data-try="3 pink balloons">3 pink balloons</button></div>
+        <button class="chip" data-try="a slime ghost and a blood witch hat">a slime ghost, a blood witch hat</button><button class="chip" data-try="3 plum candy corn">3 plum candy corn</button></div>
       <div class="step"><h3>Set the scene</h3><p>Say where things go, and add a background, ground or time of day.</p>
-        <button class="chip" data-try="a house with green trees in the background on a lavender background">trees in the background, lavender sky</button><button class="chip" data-try="a snowman and an igloo on snow at sunset">snow at sunset</button></div>
+        <button class="chip" data-try="a house with green trees in the background on a lavender background">trees in the background, lavender sky</button><button class="chip" data-try="a cauldron and a broomstick on a graveyard, spooky">cauldron on a graveyard</button><button class="chip" data-try="a snowman and an igloo on snow at sunset">snow at sunset</button></div>
     </div>
-    <h3>Colours (26)</h3>
+    <h3 id="colorsTitle">Colours</h3>
     <p class="lead" style="margin-bottom:12px">Click a colour to add it to your sentence.</p>
     <div class="swatches" id="colors"></div>
     <h3>Scene words</h3>
@@ -313,6 +374,39 @@
 
   <!-- ABOUT -->
   <section class="view" id="view-about" data-title="About" hidden>
+    <h2 class="title">Patch notes</h2>
+    <p class="lead">What changed in each version, newest first.</p>
+    <div class="notes">
+      <article class="note latest">
+        <header><h3>Update 1.1: Halloween</h3><span class="badge">Latest</span><time datetime="2026-11-22">22 November 2026</time></header>
+        <h4>New objects (13)</h4>
+        <ul><li>Ghost, jack-o'-lantern with a glowing face, witch hat, skull, tombstone, bat, spider, cauldron, candle, haunted house, candy corn, broomstick and moon.</li>
+            <li>Find them under the new Halloween group in the gallery. Total objects: 52.</li></ul>
+        <h4>New colours (8)</h4>
+        <ul><li>slime, ember, plum, ink, blood, bone, frost and rust. Total colours: 34.</li></ul>
+        <h4>New looks and grounds</h4>
+        <ul><li>New spooky time of day: purple sky, orange glow. Say spooky, halloween, creepy, scary or haunted.</li>
+            <li>New ground words: graveyard, cemetery, swamp, mud, dirt and lava.</li>
+            <li>New scene words: graveyard and halloween place several objects for you.</li></ul>
+        <h4>Engine</h4>
+        <ul><li>New <code>torus</code> shape (a ring, like a donut), with a choice of axis.</li>
+            <li>The <code>ellipsoid</code> shape can now be cut in half (<code>half 1</code> for the top, <code>half -1</code> for the bottom), which makes bowls and domes.</li>
+            <li>The donut is rebuilt from a real torus, so it is smoother and rounder.</li>
+            <li>Engine tests grew from 25 to 27, all passing.</li></ul>
+        <h4>Website</h4>
+        <ul><li>New Halloween theme. You can switch back with the Classic look button at the top.</li>
+            <li>Patch notes in About, an update banner and New tags in the gallery.</li></ul>
+        <h4>Known issues</h4>
+        <ul><li>The jack-o'-lantern mouth is only partly visible from the front.</li>
+            <li>The prompt reader still has a fixed vocabulary and tells you which words it skipped.</li></ul>
+      </article>
+      <details class="note old">
+        <summary>Update 1.0: Launch</summary>
+        <ul style="margin-top:10px"><li>C++17 ray tracer with spheres, planes, triangles, boxes, cylinders, cones and ellipsoids.</li>
+          <li>Mirror and glass materials, shadows, several lights, depth of field, BVH speed-up and multithreading.</li>
+          <li>Website with a prompt reader, 39 objects, 26 colours, day, sunset and night looks, and a scene file editor.</li></ul>
+      </details>
+    </div>
     <h2 class="title">How it works</h2>
     <p class="lead">SheepStealer Engine is a ray tracer: it follows rays of light from a camera through every pixel and works out what colour each one should be. Everything below runs on this server's processor, with no graphics card.</p>
     <div class="pipeline">
@@ -323,16 +417,16 @@
       <div class="pipe"><b>Picture</b><span>A PNG with gamma correction</span></div>
     </div>
     <div class="facts">
-      <div class="fact"><b>39</b><span>objects to choose from</span></div>
-      <div class="fact"><b>26</b><span>colours, plus 3 times of day</span></div>
-      <div class="fact"><b>25</b><span>engine tests, all passing</span></div>
+      <div class="fact"><b>52</b><span>objects to choose from</span></div>
+      <div class="fact"><b>34</b><span>colours, plus 4 times of day</span></div>
+      <div class="fact"><b>27</b><span>engine tests, all passing</span></div>
       <div class="fact"><b>15</b><span>prompt reader tests, all passing</span></div>
     </div>
     <div class="two">
       <div>
         <h3>What the engine does</h3>
         <ul class="plainlist">
-          <li>Spheres, planes, triangles, boxes, cylinders, cones and ellipsoids</li>
+          <li>Spheres, planes, triangles, boxes, cylinders, cones, ellipsoids and tori</li>
           <li>Matte, mirror and glass materials, with reflection and refraction</li>
           <li>Hard shadows, several lights, and depth of field</li>
           <li>Anti-aliasing and multithreading, with identical output for any thread count</li>
@@ -365,6 +459,10 @@
 <script>
 const $ = (id) => document.getElementById(id);
 const SUGGESTIONS = [
+  "a haunted house and a moon in the background with 2 jack-o'-lanterns, a ghost and a tombstone",
+  "a cauldron, a witch hat and a broomstick on a graveyard, spooky",
+  "5 bats and a spider in the background, spooky",
+  "a skull and 3 candles on a graveyard",
   "a blue toy car with pink trees in the background",
   "an ice cream on a yellow background",
   "3 snowmen on snow at night",
@@ -372,8 +470,9 @@ const SUGGESTIONS = [
   "a pink donut, a blue cupcake and a yellow duck on a purple background",
 ];
 const SCENE_WORDS = ["in the background", "on the left", "on the right", "2", "3", "5", "day", "sunset", "night",
-  "on grass", "on snow", "on sand", "on the road", "on the sea", "yellow background", "purple background"];
-const GROUP_WORDS = ["a forest", "a village", "a town", "a garden", "a party", "camping", "a farm", "winterland", "a kitchen", "a playground"];
+  "on grass", "on snow", "on sand", "on the road", "on the sea", "yellow background", "purple background",
+  "spooky", "on a graveyard", "on lava", "on a swamp"];
+const GROUP_WORDS = ["a forest", "a village", "a town", "a garden", "a party", "camping", "a farm", "winterland", "a kitchen", "a playground", "a graveyard", "halloween"];
 const VIEWS = ["create", "gallery", "guide", "scene", "about"];
 let examples = [], history = [], lastScene = "", busy = false, objects = [], group = "All";
 
@@ -407,11 +506,24 @@ function tintFrom(img) {
     const g = c.getContext("2d"); g.drawImage(img, 0, 0, 16, 9);
     const d = g.getImageData(0, 0, 16, 2).data; let r = 0, gr = 0, b = 0, n = 0;
     for (let i = 0; i < d.length; i += 4) { r += d[i]; gr += d[i + 1]; b += d[i + 2]; n++; }
-    document.documentElement.style.setProperty("--tint", [r, gr, b].map(v => Math.round(v / n * 0.85 + 255 * 0.15)).join(", "));
+    const classic = document.documentElement.dataset.theme === "classic", base = classic ? [255, 255, 255] : [30, 18, 48], k = classic ? 0.15 : 0.3;
+    document.documentElement.style.setProperty("--tint", [r, gr, b].map((v, i) => Math.round(v / n * (1 - k) + base[i] * k)).join(", "));
   } catch (e) {}
 }
 for (const id of ["pic", "scenePic"]) { $(id).addEventListener("load", () => tintFrom($(id))); }
 if ($("pic").complete) tintFrom($("pic"));
+
+/* ---------- theme and update banner ---------- */
+function setTheme(name) {
+  if (name === "classic") document.documentElement.dataset.theme = "classic"; else delete document.documentElement.dataset.theme;
+  $("themeBtn").textContent = name === "classic" ? "Halloween look" : "Classic look";
+  try { localStorage.setItem("sheep-theme", name); } catch (e) {}
+  tintFrom($("pic"));
+}
+$("themeBtn").addEventListener("click", () => setTheme(document.documentElement.dataset.theme === "classic" ? "halloween" : "classic"));
+$("themeBtn").textContent = document.documentElement.dataset.theme === "classic" ? "Halloween look" : "Classic look";
+try { $("event").hidden = localStorage.getItem("sheep-event-1.1") === "x"; } catch (e) { $("event").hidden = false; }
+$("eventX").addEventListener("click", () => { $("event").hidden = true; try { localStorage.setItem("sheep-event-1.1", "x"); } catch (e) {} });
 
 /* ---------- pages ---------- */
 function route() {
@@ -589,11 +701,12 @@ async function boot() {
     });
     objects.forEach(obj => {
       const b = document.createElement("button"); b.type = "button"; b.className = "card"; b.dataset.key = obj.key; b.dataset.title = obj.title; b.dataset.group = obj.group;
-      b.innerHTML = '<img loading="lazy" alt="" src="/img/obj/' + obj.key + '.jpg"><span></span>';
+      b.innerHTML = '<img loading="lazy" alt="" src="/img/obj/' + obj.key + '.jpg"><span></span>' + (obj.new ? '<i class="tag">New</i>' : '');
       b.querySelector("span").textContent = obj.title;
       b.addEventListener("click", () => { addObject(obj.title); drawGallery(); });
       $("grid").appendChild(b);
     });
+    $("colorsTitle").textContent = "Colours (" + Object.keys(od.colors).length + ")";
     Object.keys(od.colors).forEach(name => {
       const rgb = od.colors[name].map(v => Math.round(Math.min(1, v) * 255));
       const b = document.createElement("button"); b.type = "button"; b.className = "swatch";

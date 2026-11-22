@@ -63,5 +63,16 @@ for c in builder.COLORS:
         bad.append(c)
 check("all %d colours work" % len(builder.COLORS), not bad)
 
+# ---- Halloween update 1.1
+check("52 objects", len(builder.OBJECTS) == 52)
+check("34 colours", len(builder.COLORS) == 34)
+check("witch hat phrase", keys("a witch hat") == ["witchhat"])
+check("haunted house phrase", keys("a haunted house") == ["hauntedhouse"])
+check("jack-o'-lantern phrase", keys("a jack-o'-lantern") == ["jackolantern"])
+check("spooky mood word", prompt.parse("a ghost, spooky")["mood"] == "spooky")
+check("graveyard ground", prompt.parse("a skull on a graveyard")["floor_name"] == "graveyard")
+check("graveyard group", "tombstone" in keys("a graveyard"))
+check("every Halloween object is in the gallery", all(o["new"] for o in builder.object_list() if o["key"] in builder.NEW_KEYS))
+
 print("\n%d passed, %d failed" % (passed, failed))
 sys.exit(1 if failed else 0)

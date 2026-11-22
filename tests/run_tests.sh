@@ -29,6 +29,8 @@ expect_error "box with bad corners rejected"  "greater than the matching" 'camer
 expect_error "cone radius must be positive"   "radius must be greater than 0" 'camera eye 0 0 5 lookat 0 0 0\nmaterial m matte\ncone from 0 0 0 to 0 1 0 radius 0 material m\n'
 expect_error "cylinder segments limited"      "segments must be between"  'camera eye 0 0 5 lookat 0 0 0\nmaterial m matte\ncylinder from 0 0 0 to 0 1 0 radius 1 segments 2 material m\n'
 expect_error "ellipsoid radius must be positive" "every radius must be greater" 'camera eye 0 0 5 lookat 0 0 0\nmaterial m matte\nellipsoid center 0 0 0 radii 1 0 1 material m\n'
+expect_error "torus radius must be positive"  "radius and tube must be greater" 'camera eye 0 0 5 lookat 0 0 0\nmaterial m matte\ntorus center 0 0 0 radius 0 tube 1 material m\n'
+expect_error "torus axis must not be zero"    "axis must not be"          'camera eye 0 0 5 lookat 0 0 0\nmaterial m matte\ntorus center 0 0 0 radius 1 tube 0.3 axis 0 0 0 material m\n'
 
 echo "Limits and output"
 $BIN scenes/spheres.txt "$TMP/o.png" --width 5000 >/dev/null 2>&1 && bad "width limit" || ok "width limit enforced"

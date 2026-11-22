@@ -16,6 +16,11 @@ PHRASES = [
     ("letter box", "mailbox"), ("rose gold", "gold"), ("sky blue", "cyan"),
     ("light blue", "cyan"), ("dark blue", "navy"), ("light green", "mint"), ("dark green", "green"),
     ("hot pink", "magenta"), ("in front of", "front"), ("at the back", "behind"),
+    ("witch hat", "witchhat"), ("witch's hat", "witchhat"), ("witches hat", "witchhat"),
+    ("haunted house", "hauntedhouse"), ("haunted mansion", "hauntedhouse"), ("candy corn", "candycorn"),
+    ("jack-o-lantern", "jackolantern"), ("jack-o'-lantern", "jackolantern"), ("jack o lantern", "jackolantern"),
+    ("jack o'lantern", "jackolantern"), ("jackolantern", "jackolantern"), ("pumpkin lantern", "jackolantern"),
+    ("broom stick", "broomstick"), ("full moon", "moon"), ("grave stone", "tombstone"), ("head stone", "tombstone"),
     ("in the back", "behind"), ("in back", "behind"), ("far away", "behind"),
 ]
 
@@ -37,13 +42,17 @@ POS_LEFT, POS_RIGHT, POS_CENTER = {"left"}, {"right"}, {"center", "centre", "mid
 POS_BACK = {"behind", "back", "rear"}
 MOODS = {"sunset": "sunset", "sunrise": "sunset", "dusk": "sunset", "evening": "sunset",
          "night": "night", "midnight": "night", "nighttime": "night", "moonlit": "night",
-         "day": "day", "daytime": "day", "sunny": "day"}
+         "day": "day", "daytime": "day", "sunny": "day",
+         "spooky": "spooky", "halloween": "spooky", "creepy": "spooky", "scary": "spooky", "haunted": "spooky",
+         "eerie": "spooky"}
 FLOORS = {"grass": (0.36, 0.68, 0.28), "lawn": (0.36, 0.68, 0.28), "field": (0.40, 0.70, 0.30),
           "meadow": (0.42, 0.72, 0.32), "garden": None, "snow": (0.96, 0.97, 1.0), "snowy": (0.96, 0.97, 1.0),
           "winter": (0.96, 0.97, 1.0), "sand": (0.93, 0.82, 0.55), "beach": (0.93, 0.82, 0.55),
           "desert": (0.93, 0.78, 0.5), "road": (0.28, 0.28, 0.31), "street": (0.28, 0.28, 0.31),
           "water": (0.15, 0.45, 0.78), "sea": (0.15, 0.45, 0.78), "ocean": (0.15, 0.45, 0.78),
-          "lake": (0.15, 0.45, 0.78)}
+          "lake": (0.15, 0.45, 0.78),
+          "graveyard": (0.20, 0.24, 0.17), "cemetery": (0.20, 0.24, 0.17), "swamp": (0.20, 0.38, 0.15),
+          "mud": (0.30, 0.20, 0.12), "dirt": (0.36, 0.25, 0.15), "lava": (0.95, 0.30, 0.05)}
 
 # Words that stand for a whole group of objects.
 GROUPS = {
@@ -53,6 +62,9 @@ GROUPS = {
     "christmas": [("xmastree", 1, "front"), ("snowman", 1, "front")], "camping": [("tent", 1, "front"), ("tree", 3, "back")],
     "playground": [("ball", 2, "front"), ("bench", 1, "front")], "farm": [("windmill", 1, "back"), ("fence", 2, "front")],
     "winterland": [("snowman", 2, "front"), ("igloo", 1, "back")], "kitchen": [("table", 1, "front"), ("chair", 2, "front")],
+    "graveyard": [("tombstone", 3, "front"), ("ghost", 1, "back"), ("bat", 2, "back")],
+    "cemetery": [("tombstone", 3, "front"), ("ghost", 1, "back"), ("bat", 2, "back")],
+    "halloween": [("jackolantern", 2, "front"), ("ghost", 1, "back"), ("bat", 2, "back")],
 }
 
 OBJECT_WORDS = {}
@@ -83,7 +95,7 @@ def colour_of(word):
 def tokenize(text):
     text = text.lower()
     for a, b in PHRASES:
-        text = re.sub(r"\b" + re.escape(a) + r"\b", b, text)
+        text = re.sub(r"\b" + re.escape(a) + r"(s?)\b", lambda m, b=b: b + m.group(1), text)
     text = re.sub(r"[,;.]", " , ", text)
     text = re.sub(r"[^a-z0-9, ]", " ", text)
     return text.split()

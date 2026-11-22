@@ -72,3 +72,11 @@ python3 -m venv .venv && .venv/bin/pip install -r server/requirements.txt
   and ground words such as grass, snow and sand. Words it does not know are reported back, not guessed.
 * New engine shapes: `box`, `cylinder`, `cone` and `ellipsoid` (with `half 1` for a dome) in `scenes/shapes.txt`.
 * Tests: `bash tests/run_tests.sh` (engine) and `python3 tests/test_prompt.py` (prompt reader and objects).
+
+## Update 1.1: Halloween
+
+- 13 new objects (ghost, jack-o'-lantern, witch hat, skull, tombstone, bat, spider, cauldron, candle, haunted house, candy corn, broomstick, moon): 52 in total.
+- 8 new colours (slime, ember, plum, ink, blood, bone, frost, rust): 34 in total.
+- New `spooky` look, ground words (graveyard, cemetery, swamp, mud, dirt, lava) and the scene words `graveyard` and `halloween`.
+- Engine: new `torus` shape and half ellipsoids (`half 1` / `half -1`); the donut now uses a real torus. 27 engine tests.
+- Website: Halloween theme (with a Classic look switch), patch notes in About, New tags in the gallery.
