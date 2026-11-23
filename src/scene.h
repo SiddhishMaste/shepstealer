@@ -152,7 +152,7 @@ inline const std::map<std::string, int>& optionSizes() {
         {"center", 3}, {"radius", 1}, {"point", 3}, {"normal", 3},
         {"v0", 3}, {"v1", 3}, {"v2", 3}, {"position", 3}, {"intensity", 1},
         {"material", 1}, {"file", 1}, {"offset", 3},
-        {"min", 3}, {"max", 3}, {"from", 3}, {"to", 3}, {"segments", 1}, {"turn", 1}, {"radii", 3}, {"half", 1}, {"tube", 1}, {"axis", 3},
+        {"min", 3}, {"max", 3}, {"from", 3}, {"to", 3}, {"segments", 1}, {"turn", 1}, {"radii", 3}, {"half", 1}, {"tube", 1}, {"axis", 3}, {"texture", 1}, {"glow", 1},
     };
     return sizes;
 }
@@ -167,7 +167,7 @@ inline Args parseArgs(const std::vector<std::string>& tok, size_t start, const s
         if (i + n >= tok.size()) a.fail("option '" + key + "' needs " + std::to_string(n) + " value(s)");
         for (int k = 1; k <= n; k++) {              // a value that is itself an option name = values missing
             const std::string& val = tok[i + k];
-            if (key != "material" && key != "file" && optionSizes().count(val))
+            if (key != "material" && key != "file" && key != "texture" && optionSizes().count(val))
                 a.fail("option '" + key + "' needs " + std::to_string(n) + " number(s) but found '" + val + "' first");
         }
         if (a.has(key)) a.fail("option '" + key + "' is given twice");
@@ -414,7 +414,7 @@ inline Scene loadScene(const std::string& path) {
         } else if (cmd == "material") {
             if (tok.size() < 3) throw SceneError(where + ": usage: material NAME matte|mirror|glass [options]");
             Args a = parseArgs(tok, 3, where);
-            a.allow({"color", "specular", "shininess", "ior", "checker", "scale"});
+            a.allow({"color", "specular", "shininess", "ior", "checker", "scale", "texture", "glow"});
             const std::string& name = tok[1];
             const std::string& type = tok[2];
             if (mats.count(name)) a.fail("material '" + name + "' is already defined");
@@ -440,6 +440,16 @@ inline Scene loadScene(const std::string& path) {
                 m.scale = a.num("scale", 1.0);
                 a.need(m.scale > 0, "scale must be greater than 0");
             }
+            if (a.has("texture")) {
+                std::string tn = a.reqStr("texture");
+                if (!texFromName(tn, m.tex))
+                    a.fail("unknown texture '" + tn + "' (use grass, dirt, stone, sand, planks, water, lava, cloud, snow, leaves or bricks)");
+                if (a.has("checker")) a.fail("use either 'texture' or 'checker', not both");
+                m.scale = a.num("scale", 0.25);
+                a.need(m.scale > 0, "scale must be greater than 0");
+            }
+            m.glow = a.num("glow", 0.0);
+            a.need(m.glow >= 0 && m.glow <= 2, "glow must be between 0 and 2");
             mats[name] = m;
 
         } else if (cmd == "sphere") {

@@ -2,7 +2,7 @@
 and turns it into a list of objects, colours, a background and a mood."""
 import re
 
-from builder import COLORS, COLOR_ALIASES, OBJECTS, MAX_OBJECTS
+from builder import COLORS, COLOR_ALIASES, OBJECTS, MAX_OBJECTS, BLOCK_KEYS, TEX_FLOORS
 
 # Phrases that mean one thing; they are joined into one word before reading.
 PHRASES = [
@@ -16,6 +16,10 @@ PHRASES = [
     ("letter box", "mailbox"), ("rose gold", "gold"), ("sky blue", "cyan"),
     ("light blue", "cyan"), ("dark blue", "navy"), ("light green", "mint"), ("dark green", "green"),
     ("hot pink", "magenta"), ("in front of", "front"), ("at the back", "behind"),
+    ("grass block", "grassblock"), ("stone block", "stoneblock"), ("lava block", "lavablock"),
+    ("water block", "waterblock"), ("block tree", "blocktree"), ("pixel tree", "blocktree"),
+    ("block cloud", "blockcloud"), ("pixel cloud", "blockcloud"), ("block house", "blockhouse"),
+    ("pixel house", "blockhouse"), ("block sheep", "blocksheep"), ("pixel sheep", "blocksheep"),
     ("witch hat", "witchhat"), ("witch's hat", "witchhat"), ("witches hat", "witchhat"),
     ("haunted house", "hauntedhouse"), ("haunted mansion", "hauntedhouse"), ("candy corn", "candycorn"),
     ("jack-o-lantern", "jackolantern"), ("jack-o'-lantern", "jackolantern"), ("jack o lantern", "jackolantern"),
@@ -36,6 +40,12 @@ background backdrop sky wall bg ground floor carpet surface behind front left ri
 where who which be then where very really look looks looking can you could would should so as into
 out onto upon along around""".split())
 
+BLOCKY_WORDS = {"blocky", "pixel", "pixelated", "voxel", "minecraft", "pixelart"}
+GROUND_TEX = {"lava": "lava", "water": "water", "grass": "grass", "dirt": "dirt", "stone": "stone", "cobblestone": "stone",
+              "cobble": "stone", "sand": "sand", "snow": "snow", "planks": "planks", "wood": "planks",
+              "bricks": "bricks", "brick": "bricks"}
+GROUND_NOUNS = {"ground", "floor", "platform", "island", "base", "pad", "patch"}
+PLATFORM_NOUNS = {"platform", "island", "pad", "patch", "base"}
 BG_WORDS = {"background", "backdrop", "sky", "wall", "bg"}
 FLOOR_WORDS = {"ground", "floor", "carpet", "surface"}
 POS_LEFT, POS_RIGHT, POS_CENTER = {"left"}, {"right"}, {"center", "centre", "middle"}
@@ -52,7 +62,7 @@ FLOORS = {"grass": (0.36, 0.68, 0.28), "lawn": (0.36, 0.68, 0.28), "field": (0.4
           "water": (0.15, 0.45, 0.78), "sea": (0.15, 0.45, 0.78), "ocean": (0.15, 0.45, 0.78),
           "lake": (0.15, 0.45, 0.78),
           "graveyard": (0.20, 0.24, 0.17), "cemetery": (0.20, 0.24, 0.17), "swamp": (0.20, 0.38, 0.15),
-          "mud": (0.30, 0.20, 0.12), "dirt": (0.36, 0.25, 0.15), "lava": (0.95, 0.30, 0.05)}
+          "mud": (0.30, 0.20, 0.12), "stone": (0.5, 0.5, 0.52), "dirt": (0.36, 0.25, 0.15), "lava": (0.95, 0.30, 0.05)}
 
 # Words that stand for a whole group of objects.
 GROUPS = {
@@ -109,6 +119,10 @@ def parse(text):
     sky_name = floor_name = None
     mood = "day"
     mood_given = False
+    blocky = False
+    for i, w in enumerate(tokens):
+        if w in BLOCKY_WORDS:
+            blocky = True; used[i] = True
     ignored = []
     notes = []
 
@@ -131,6 +145,29 @@ def parse(text):
             return j
         return None
 
+    # 0. textured ground: "lava ground", "a centre cobblestone ground", "a stone island"
+    floor_tex = platform = None
+    specs = []
+    for i, w in enumerate(tokens):
+        if w in GROUND_TEX and i + 1 < n and tokens[i + 1] in GROUND_NOUNS:
+            near = range(max(0, i - 3), i)
+            is_plat = tokens[i + 1] in PLATFORM_NOUNS or any(tokens[k] in POS_CENTER for k in near)
+            for k in near:
+                if tokens[k] in POS_CENTER:
+                    used[k] = True
+            used[i] = used[i + 1] = True
+            specs.append((GROUND_TEX[w], is_plat))
+    for tex_name, is_plat in specs:
+        if is_plat and platform is None:
+            platform = tex_name
+        elif not is_plat and floor_tex is None:
+            floor_tex = tex_name
+        else:
+            notes.append("Only one ground and one platform are drawn.")
+    if floor_tex:
+        floor_name = floor_tex
+        floor = FLOORS.get(floor_tex) or (0.5, 0.5, 0.5)
+
     # 1. background and floor colours ("yellow background", "on green grass")
     for i, w in enumerate(tokens):
         if w in BG_WORDS or w in FLOOR_WORDS:
@@ -147,9 +184,11 @@ def parse(text):
     for i, w in enumerate(tokens):
         if w in MOODS:
             mood, mood_given, used[i] = MOODS[w], True, True
-        elif w in FLOORS and not (singular(w) in OBJECT_WORDS):
+        elif w in FLOORS and not used[i] and not (singular(w) in OBJECT_WORDS):
             if FLOORS[w] is not None and floor is None:
                 floor, floor_name = FLOORS[w], w
+                if TEX_FLOORS.get(w):
+                    floor_tex = TEX_FLOORS[w]
             used[i] = True
 
     # 3. objects with colour, count and position
@@ -233,6 +272,8 @@ def parse(text):
             continue
         ignored.append(w)
 
+    if items and all(it["key"] in BLOCK_KEYS for it in items):
+        blocky = True          # only block objects: draw the whole world in blocks
     flat = []
     for it in items:
         for _ in range(it["count"]):
@@ -240,7 +281,7 @@ def parse(text):
     if len(flat) > MAX_OBJECTS:
         notes.append("Only the first %d objects are drawn." % MAX_OBJECTS)
         flat = flat[:MAX_OBJECTS]
-    return dict(items=flat, groups=items, sky=sky, sky_name=sky_name, floor=floor, floor_name=floor_name, mood=mood, ignored=ignored, notes=notes)
+    return dict(items=flat, groups=items, sky=sky, sky_name=sky_name, floor=floor, floor_name=floor_name, mood=mood, blocky=blocky, floor_tex=floor_tex, platform=platform, ignored=ignored, notes=notes)
 
 
 def color_name(c):
@@ -271,6 +312,10 @@ def describe(spec):
         extra.append("%s background" % spec["sky_name"])
     if spec["floor"]:
         extra.append("%s ground" % spec["floor_name"])
+    if spec.get("platform"):
+        extra.append("%s platform in the centre" % spec["platform"])
     if spec["mood"] != "day":
         extra.append(spec["mood"])
+    if spec.get("blocky"):
+        extra.append("blocky look")
     return out + ((" | " + ", ".join(extra)) if extra else "")

@@ -244,7 +244,7 @@
       <a class="tab" href="#/about" data-view="about"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v6"/><path d="M12 7.5v.01"/></svg>About</a>
     </nav>
     <div class="right">
-      <a class="ver" href="#/about" title="See the patch notes">Update 1.1</a>
+      <a class="ver" href="#/about" title="See the patch notes">Update 1.2</a>
       <button class="themebtn" id="themeBtn" type="button"></button>
       <a class="code-link" href="https://github.com/SiddhishMaste/shepstealer">Code</a>
     </div>
@@ -257,7 +257,7 @@
   <section class="view" id="view-create" data-title="Create">
     <div class="event" id="event" hidden>
       <svg viewBox="0 0 64 64" aria-hidden="true"><path d="M32 6c-17 0-26 12-26 26s10 24 26 24 26-10 26-24S49 6 32 6z" fill="#ff7a1a"/><path d="M28 7c-6 8-6 42 0 50M36 7c6 8 6 42 0 50" stroke="#c24f00" stroke-width="2" fill="none"/><path d="M30 7l1-6 6-1-1 7z" fill="#8ae234"/><path d="M17 28l7-7 3 7zM37 28l3-7 7 7zM20 40q12 10 24 0" fill="#ffd34d" stroke="#ffd34d" stroke-width="2"/></svg>
-      <div><b>Update 1.1: Halloween</b><span>13 new objects, 8 new colours, a spooky look and graveyard ground. Try <a href="#/create" data-try="a haunted house and a moon in the background with 2 jack-o'-lanterns, a ghost and a tombstone, spooky">a haunted scene</a> or read the <a href="#/about">patch notes</a>.</span></div>
+      <div><b>Update 1.2: Block textures</b><span>Pixel-block grass, water, lava, stone, clouds and more, 8 block objects and a blocky look. Try <a href="#/create" data-try="a lava ground with a sky background and a centre cobblestone ground on lava with a house on it">a house on a stone island in lava</a>, <a href="#/create" data-try="a block house with 2 block trees and a block sheep, a block cloud in the background">a block village</a>, or the <a href="#/create" data-try="a haunted house and a moon in the background with 2 jack-o'-lanterns, a ghost and a tombstone, spooky">Halloween scene</a>. Read the <a href="#/about">patch notes</a>.</span></div>
       <button type="button" id="eventX" aria-label="Hide this message">&times;</button>
     </div>
     <div class="hero-wrap">
@@ -266,7 +266,7 @@
     <p class="lead">A C++ ray tracer draws every picture from simple shapes. Name some objects, pick colours and add a background.</p>
     </div>
     <form class="prompt" id="form">
-      <textarea id="prompt" rows="2" maxlength="300" aria-label="Describe your scene" placeholder="a haunted house with a ghost and 2 jack-o'-lanterns, spooky">a haunted house and a moon in the background with 2 jack-o'-lanterns and a ghost, spooky</textarea>
+      <textarea id="prompt" rows="2" maxlength="300" aria-label="Describe your scene" placeholder="a block house with 2 block trees and a block sheep">a block house with 2 block trees and a block sheep, a block cloud in the background</textarea>
       <button class="btn" id="go" type="submit">Render</button>
     </form>
     <p class="msg" id="msg" role="status"></p>
@@ -275,14 +275,14 @@
     <div class="stage">
       <div>
         <div class="frame" id="frame">
-          <img id="pic" src="/img/hero.jpg" alt="A haunted house and full moon behind two jack-o'-lanterns, a ghost and a tombstone, drawn by the ray tracer">
+          <img id="pic" src="/img/hero.jpg" alt="A block house, two block trees and a block sheep on pixel grass, drawn by the ray tracer">
           <div class="busy" id="busy"><p id="busyText">Reading your sentence</p></div>
         </div>
         <div class="history" id="history" aria-label="Earlier pictures"></div>
       </div>
       <aside class="panel">
         <h3>In this picture</h3>
-        <ul id="understood"><li>haunted house (background)</li><li>moon (background)</li><li>2 jack-o'-lanterns</li><li>ghost</li><li>spooky look</li></ul>
+        <ul id="understood"><li>block house</li><li>2 x block tree</li><li>block sheep</li><li>block cloud (background)</li><li>blocky look</li></ul>
         <div class="skipped" id="skipped" hidden></div>
         <p class="time" id="time">Sample picture made by the engine (Halloween update).</p>
         <div class="settings">
@@ -378,28 +378,34 @@
     <p class="lead">What changed in each version, newest first.</p>
     <div class="notes">
       <article class="note latest">
-        <header><h3>Update 1.1: Halloween</h3><span class="badge">Latest</span><time datetime="2026-11-22">22 November 2026</time></header>
-        <h4>New objects (13)</h4>
-        <ul><li>Ghost, jack-o'-lantern with a glowing face, witch hat, skull, tombstone, bat, spider, cauldron, candle, haunted house, candy corn, broomstick and moon.</li>
-            <li>Find them under the new Halloween group in the gallery. Total objects: 52.</li></ul>
-        <h4>New colours (8)</h4>
-        <ul><li>slime, ember, plum, ink, blood, bone, frost and rust. Total colours: 34.</li></ul>
-        <h4>New looks and grounds</h4>
-        <ul><li>New spooky time of day: purple sky, orange glow. Say spooky, halloween, creepy, scary or haunted.</li>
-            <li>New ground words: graveyard, cemetery, swamp, mud, dirt and lava.</li>
-            <li>New scene words: graveyard and halloween place several objects for you.</li></ul>
+        <header><h3>Update 1.2: Block textures</h3><span class="badge">Latest</span><time datetime="2026-11-23">23 November 2026</time></header>
         <h4>Engine</h4>
-        <ul><li>New <code>torus</code> shape (a ring, like a donut), with a choice of axis.</li>
-            <li>The <code>ellipsoid</code> shape can now be cut in half (<code>half 1</code> for the top, <code>half -1</code> for the bottom), which makes bowls and domes.</li>
-            <li>The donut is rebuilt from a real torus, so it is smoother and rounder.</li>
-            <li>Engine tests grew from 25 to 27, all passing.</li></ul>
+        <ul><li>New <code>texture</code> option for materials: grass, dirt, stone, sand, planks, water, lava, cloud, snow, leaves and bricks. Every block of space gets one flat colour, so surfaces look like pixel art.</li>
+            <li>New <code>glow</code> option, so lava and clouds light themselves.</li>
+            <li>Block size is set with <code>scale</code>. Textured scenes give the same picture on any number of threads.</li>
+            <li>Engine tests grew from 27 to 32, all passing.</li></ul>
+        <h4>New objects (8)</h4>
+        <ul><li>Grass block, stone block, lava block, water block, block tree, block cloud, block house and block sheep, in the new Blocks group. Total objects: 60.</li></ul>
+        <h4>Blocky look</h4>
+        <ul><li>Say <b>blocky</b> or <b>pixel</b> to draw the whole world in blocks: pixel grass, water, sand, snow, stone, dirt or lava ground and a flat blue sky.</li>
+            <li>A scene made only of block objects turns the blocky look on by itself.</li>
+            <li>New ground word: stone.</li></ul>
+        <h4>Textured ground and platforms</h4>
+        <ul><li>Ground words now draw real textures: <i>lava ground</i>, <i>sand</i>, <i>water</i>, <i>snow</i>, <i>stone</i>, <i>cobblestone</i>, <i>dirt</i>, <i>planks</i>, <i>bricks</i>.</li>
+            <li>Add a raised platform in the centre: <i>a centre cobblestone ground on lava with a house on it</i>, or <i>a sand island in water</i>.</li></ul>
         <h4>Website</h4>
-        <ul><li>New Halloween theme. You can switch back with the Classic look button at the top.</li>
-            <li>Patch notes in About, an update banner and New tags in the gallery.</li></ul>
+        <ul><li>New update banner, pill and a new default picture. The Halloween theme stays.</li></ul>
         <h4>Known issues</h4>
-        <ul><li>The jack-o'-lantern mouth is only partly visible from the front.</li>
-            <li>The prompt reader still has a fixed vocabulary and tells you which words it skipped.</li></ul>
+        <ul><li>Block cloud and block sheep are drawn from simple boxes, so their faces are very plain.</li>
+            <li>Textures use a 3D block grid, so a sphere gets chunky blocks too.</li></ul>
       </article>
+      <details class="note old">
+        <summary>Update 1.1: Halloween (22 November 2026)</summary>
+        <ul style="margin-top:10px"><li>13 Halloween objects, 8 colours (slime, ember, plum, ink, blood, bone, frost, rust), a spooky look and graveyard, cemetery, swamp, mud, dirt and lava ground words.</li>
+          <li>Engine: new <code>torus</code> shape and half ellipsoids (<code>half 1</code>, <code>half -1</code>). The donut now uses a real torus.</li>
+          <li>Website: Halloween theme with a Classic look button, patch notes and New tags. Engine tests grew from 25 to 27.</li>
+          <li>Known issue: the jack-o'-lantern mouth is only partly visible from the front.</li></ul>
+      </details>
       <details class="note old">
         <summary>Update 1.0: Launch</summary>
         <ul style="margin-top:10px"><li>C++17 ray tracer with spheres, planes, triangles, boxes, cylinders, cones and ellipsoids.</li>
@@ -417,16 +423,16 @@
       <div class="pipe"><b>Picture</b><span>A PNG with gamma correction</span></div>
     </div>
     <div class="facts">
-      <div class="fact"><b>52</b><span>objects to choose from</span></div>
+      <div class="fact"><b>60</b><span>objects to choose from</span></div>
       <div class="fact"><b>34</b><span>colours, plus 4 times of day</span></div>
-      <div class="fact"><b>27</b><span>engine tests, all passing</span></div>
+      <div class="fact"><b>32</b><span>engine tests, all passing</span></div>
       <div class="fact"><b>15</b><span>prompt reader tests, all passing</span></div>
     </div>
     <div class="two">
       <div>
         <h3>What the engine does</h3>
         <ul class="plainlist">
-          <li>Spheres, planes, triangles, boxes, cylinders, cones, ellipsoids and tori</li>
+          <li>Spheres, planes, triangles, boxes, cylinders, cones, ellipsoids, tori and block textures</li>
           <li>Matte, mirror and glass materials, with reflection and refraction</li>
           <li>Hard shadows, several lights, and depth of field</li>
           <li>Anti-aliasing and multithreading, with identical output for any thread count</li>
@@ -459,6 +465,13 @@
 <script>
 const $ = (id) => document.getElementById(id);
 const SUGGESTIONS = [
+  "a block house with 2 block trees and a block sheep, a block cloud in the background",
+  "a grass block, a stone block, a lava block and a water block",
+  "a lava block and a block sheep on lava",
+  "a lava ground with a sky background and a centre cobblestone ground on lava with a house on it",
+  "a block house on a sand island in water with a block tree",
+  "a snowman on a centre planks platform on snow",
+  "a car and a tree on pixel grass, blocky",
   "a haunted house and a moon in the background with 2 jack-o'-lanterns, a ghost and a tombstone",
   "a cauldron, a witch hat and a broomstick on a graveyard, spooky",
   "5 bats and a spider in the background, spooky",
@@ -471,7 +484,7 @@ const SUGGESTIONS = [
 ];
 const SCENE_WORDS = ["in the background", "on the left", "on the right", "2", "3", "5", "day", "sunset", "night",
   "on grass", "on snow", "on sand", "on the road", "on the sea", "yellow background", "purple background",
-  "spooky", "on a graveyard", "on lava", "on a swamp"];
+  "spooky", "on a graveyard", "on lava", "on a swamp", "blocky", "pixel", "on pixel sand", "on stone"];
 const GROUP_WORDS = ["a forest", "a village", "a town", "a garden", "a party", "camping", "a farm", "winterland", "a kitchen", "a playground", "a graveyard", "halloween"];
 const VIEWS = ["create", "gallery", "guide", "scene", "about"];
 let examples = [], history = [], lastScene = "", busy = false, objects = [], group = "All";
@@ -522,8 +535,8 @@ function setTheme(name) {
 }
 $("themeBtn").addEventListener("click", () => setTheme(document.documentElement.dataset.theme === "classic" ? "halloween" : "classic"));
 $("themeBtn").textContent = document.documentElement.dataset.theme === "classic" ? "Halloween look" : "Classic look";
-try { $("event").hidden = localStorage.getItem("sheep-event-1.1") === "x"; } catch (e) { $("event").hidden = false; }
-$("eventX").addEventListener("click", () => { $("event").hidden = true; try { localStorage.setItem("sheep-event-1.1", "x"); } catch (e) {} });
+try { $("event").hidden = localStorage.getItem("sheep-event-1.2") === "x"; } catch (e) { $("event").hidden = false; }
+$("eventX").addEventListener("click", () => { $("event").hidden = true; try { localStorage.setItem("sheep-event-1.2", "x"); } catch (e) {} });
 
 /* ---------- pages ---------- */
 function route() {

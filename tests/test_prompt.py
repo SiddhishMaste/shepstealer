@@ -64,7 +64,7 @@ for c in builder.COLORS:
 check("all %d colours work" % len(builder.COLORS), not bad)
 
 # ---- Halloween update 1.1
-check("52 objects", len(builder.OBJECTS) == 52)
+check("60 objects", len(builder.OBJECTS) == 60)
 check("34 colours", len(builder.COLORS) == 34)
 check("witch hat phrase", keys("a witch hat") == ["witchhat"])
 check("haunted house phrase", keys("a haunted house") == ["hauntedhouse"])
@@ -72,7 +72,27 @@ check("jack-o'-lantern phrase", keys("a jack-o'-lantern") == ["jackolantern"])
 check("spooky mood word", prompt.parse("a ghost, spooky")["mood"] == "spooky")
 check("graveyard ground", prompt.parse("a skull on a graveyard")["floor_name"] == "graveyard")
 check("graveyard group", "tombstone" in keys("a graveyard"))
-check("every Halloween object is in the gallery", all(o["new"] for o in builder.object_list() if o["key"] in builder.NEW_KEYS))
+check("gallery groups and New tags are right", all(o["new"] == (o["key"] in builder.NEW_KEYS) for o in builder.object_list()) and all(o["group"] == "Halloween" for o in builder.object_list() if o["key"] in builder.HALLOWEEN_KEYS))
+
+# ---- Update 1.2: block textures
+check("block house phrase", keys("a block house") == ["blockhouse"])
+check("grass block phrase", keys("a grass block") == ["grassblock"])
+check("sheep word", keys("2 sheep") == ["blocksheep", "blocksheep"])
+check("blocky word", prompt.parse("a car, blocky")["blocky"] is True)
+check("plain scene is not blocky", prompt.parse("a car")["blocky"] is False)
+check("only block objects turn blocky on", prompt.parse("a lava block")["blocky"] is True)
+check("blocky floor uses a texture", "texture grass" in builder.compose([dict(key="car", color=None, row="front", hint=None)], blocky=True)[0])
+check("blocky lava ground glows", "texture lava" in builder.compose([dict(key="car", color=None, row="front", hint=None)], blocky=True, floor_tex="lava")[0])
+check("normal floor has no texture", "texture" not in builder.compose([dict(key="car", color=None, row="front", hint=None)])[0])
+
+# ---- textured ground and platforms
+_u = prompt.parse("a lava ground with a sky background and a centre cobblestone ground on lava with a house on it")
+check("lava ground + stone platform (user sentence)", _u["floor_tex"] == "lava" and _u["platform"] == "stone" and keys("a house") == ["house"] and [i["key"] for i in _u["items"]] == ["house"])
+_s = prompt.parse("a block house on a sand island in water")
+check("sand island in water", _s["floor_tex"] == "water" and _s["platform"] == "sand")
+check("ground words give textured ground without blocky", prompt.parse("a car on grass")["floor_tex"] == "grass")
+check("platform box is written", "box min" in builder.compose([dict(key="house", color=None, row="front", hint=None)], floor_tex="lava", platform="stone")[0])
+check("platform texture in scene", "texture stone" in builder.compose([dict(key="house", color=None, row="front", hint=None)], floor_tex="lava", platform="stone")[0])
 
 print("\n%d passed, %d failed" % (passed, failed))
 sys.exit(1 if failed else 0)

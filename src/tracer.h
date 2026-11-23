@@ -33,8 +33,8 @@ inline bool inShadow(const Scene& sc, Vec3 origin, const Vec3& dir, double dist)
 // Ambient + diffuse + specular, with hard shadows. Mirror and glass call this
 // with withDiffuse = false and only get highlights.
 inline Vec3 lighting(const Scene& sc, const Ray& r, const HitRecord& rec, bool withDiffuse) {
-    Vec3 base = rec.mat.albedo(rec.point);
-    Vec3 result = withDiffuse ? base * sc.settings.ambient : Vec3(0, 0, 0);
+    Vec3 base = rec.mat.albedo(rec.point, rec.normal);
+    Vec3 result = withDiffuse ? base * (sc.settings.ambient + rec.mat.glow) : Vec3(0, 0, 0);
     Vec3 toEye = (r.direction * -1.0).normalize();
     Vec3 shadowOrigin = rec.point + rec.normal * T_MIN;
 

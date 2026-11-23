@@ -66,19 +66,33 @@ class SceneWriter:
                                   % (name, kind, vec(c), num(spec), num(shin), extra))
         return self.mats[key]
 
+    def texture(self, name, tint=(1, 1, 1), scale=0.25, spec=0.03, shin=20, glow=0.0):
+        key = ("tex", name, tuple(round(v, 2) for v in tint), round(scale, 3), round(spec, 2), glow)
+        if key not in self.mats:
+            mname = "m%d" % len(self.mats)
+            self.mats[key] = mname
+            self.mat_lines.append("material %s matte color %s texture %s scale %s specular %s shininess %s%s"
+                                  % (mname, vec(tint), name, num(scale), num(spec), num(shin),
+                                     (" glow %s" % num(glow)) if glow else ""))
+        return self.mats[key]
+
 
 class Pen:
     """Draws one object. Coordinates are local: the object stands on y = 0 and
     is moved to (ox, 0, oz) and scaled by s."""
 
-    def __init__(self, sw, ox, oz, s):
-        self.sw, self.ox, self.oz, self.s = sw, ox, oz, s
+    def __init__(self, sw, ox, oz, s, oy=0.0):
+        self.sw, self.ox, self.oz, self.s, self.oy = sw, ox, oz, s, oy
 
     def P(self, p):
-        return (self.ox + p[0] * self.s, p[1] * self.s, self.oz + p[2] * self.s)
+        return (self.ox + p[0] * self.s, self.oy + p[1] * self.s, self.oz + p[2] * self.s)
 
     def m(self, color, spec=0.25, shin=32, kind="matte", ior=None):
         return self.sw.material(color, spec, shin, kind, ior)
+
+    def tex(self, name, tint=None, spec=0.03, glow=0.0, shin=20):
+        """A pixel-block texture. The block size shrinks and grows with the object."""
+        return self.sw.texture(name, tint or (1, 1, 1), 0.25 * self.s, spec, shin, glow)
 
     def sphere(self, c, r, mat):
         self.sw.shape_lines.append("sphere center %s radius %s material %s" % (vec(self.P(c)), num(r * self.s), mat))
@@ -725,11 +739,85 @@ def moon(p, col):
         p.ell((x, y, 1.5), (r, r, r * .25), crater)
 
 
-NEW_KEYS = ["ghost", "jackolantern", "witchhat", "skull", "tombstone", "bat", "spider", "cauldron",
+# ---------------------------------------------------------------- Update 1.2: block objects
+@obj("grassblock", "Grass block", ["grassblock"], 2.4, 2.1, None)
+def grassblock(p, col):
+    p.box((-1, 0, -1), (1, 2, 1), p.tex("dirt", col))
+    p.box((-1.02, 1.72, -1.02), (1.02, 2.0, 1.02), p.tex("grass", col))
+
+
+@obj("stoneblock", "Stone block", ["stoneblock"], 2.4, 2.1, None)
+def stoneblock(p, col):
+    p.box((-1, 0, -1), (1, 2, 1), p.tex("stone", col))
+
+
+@obj("lavablock", "Lava block", ["lavablock"], 2.4, 2.1, None)
+def lavablock(p, col):
+    p.box((-1, 0, -1), (1, 2, 1), p.tex("lava", col, spec=0.0, glow=0.45))
+
+
+@obj("waterblock", "Water block", ["waterblock"], 2.4, 2.1, None)
+def waterblock(p, col):
+    p.box((-1, 0, -1), (1, 2, 1), p.tex("water", col, spec=0.5, shin=80))
+
+
+@obj("blocktree", "Block tree", ["blocktree", "pixeltree"], 2.6, 4.1, None)
+def blocktree(p, col):
+    p.box((-.3, 0, -.3), (.3, 2.3, .3), p.tex("planks", (.75, .6, .45)))
+    leaves = p.tex("leaves", col)
+    p.box((-1.2, 2.0, -1.2), (1.2, 3.2, 1.2), leaves)
+    p.box((-.75, 3.2, -.75), (.75, 3.9, .75), leaves)
+
+
+@obj("blockcloud", "Block cloud", ["blockcloud", "pixelcloud"], 4.0, 4.2, None)
+def blockcloud(p, col):
+    c = p.tex("cloud", col, spec=0.0, glow=0.25)
+    p.box((-1.8, 2.6, -.9), (1.8, 3.3, .9), c)
+    p.box((-1.0, 3.3, -.7), (.9, 3.9, .7), c)
+    p.box((.9, 3.3, -.5), (1.6, 3.7, .5), c)
+
+
+@obj("blockhouse", "Block house", ["blockhouse", "pixelhouse"], 4.6, 3.8, None)
+def blockhouse(p, col):
+    p.box((-1.8, 0, -1.4), (1.8, 2.0, 1.4), p.tex("planks", col))
+    roof = p.tex("bricks", col)
+    p.box((-2.0, 2.0, -1.6), (2.0, 2.4, 1.6), roof)
+    p.box((-1.5, 2.4, -1.2), (1.5, 2.8, 1.2), roof)
+    p.box((-1.0, 2.8, -.8), (1.0, 3.2, .8), roof)
+    p.box((-.35, 0, 1.4), (.35, 1.3, 1.46), p.m((.3, .18, .08), .02, 10))
+    glass = p.m((.6, .85, 1.0), .5, 60)
+    for x in (-1.4, .8):
+        p.box((x, 1.0, 1.4), (x + .6, 1.6, 1.46), glass)
+
+
+@obj("blocksheep", "Block sheep", ["blocksheep", "sheep", "pixelsheep"], 2.4, 2.2, None)
+def blocksheep(p, col):
+    wool = p.tex("cloud", col or (1.0, 1.0, 1.0), spec=0.0)
+    skin = p.m((.8, .68, .58), .02, 10)
+    dark = p.m((.12, .1, .1), .02, 10)
+    p.box((-.6, .7, -1.0), (.6, 1.7, .9), wool)
+    p.box((-.35, 1.15, .9), (.35, 1.9, 1.5), skin)
+    for x in (-.2, .2):
+        p.box((x - .06, 1.5, 1.5), (x + .06, 1.65, 1.53), dark)
+    for x in (-.45, .2):
+        for z in (-.8, .55):
+            p.box((x, 0, z), (x + .25, .7, z + .25), skin)
+
+
+HALLOWEEN_KEYS = ["ghost", "jackolantern", "witchhat", "skull", "tombstone", "bat", "spider", "cauldron",
             "candle", "hauntedhouse", "candycorn", "broomstick", "moon"]
+NEW_KEYS = ["grassblock", "stoneblock", "lavablock", "waterblock", "blocktree", "blockcloud", "blockhouse", "blocksheep"]
+BLOCK_KEYS = set(NEW_KEYS)
+TEX_FLOORS = {"grass": "grass", "lawn": "grass", "field": "grass", "meadow": "grass", "swamp": "grass",
+              "snow": "snow", "snowy": "snow", "winter": "snow", "sand": "sand", "beach": "sand", "desert": "sand",
+              "road": "stone", "street": "stone", "stone": "stone", "water": "water", "sea": "water",
+              "ocean": "water", "lake": "water", "graveyard": "dirt", "cemetery": "dirt", "mud": "dirt",
+              "dirt": "dirt", "lava": "lava"}
+BLOCKY_SKY = dict(top=(0.47, 0.66, 1.0), bottom=(0.78, 0.88, 1.0), floor=(0.4, 0.7, 0.3), check=(0.35, 0.62, 0.26))
 
 UI_GROUPS = {
-    "Halloween": NEW_KEYS,
+    "Blocks": NEW_KEYS,
+    "Halloween": HALLOWEEN_KEYS,
     "Animals": ["teddy", "bunny", "cat", "duck", "penguin"],
     "Food": ["icecream", "cupcake", "cake", "pizza", "donut", "apple", "lollipop"],
     "Buildings": ["house", "castle", "lighthouse", "windmill", "igloo", "tent"],
@@ -784,17 +872,19 @@ def layout(items):
     return placed
 
 
-def compose(items, sky=None, floor_color=None, mood="day", width=640, height=360, spp=16):
+def compose(items, sky=None, floor_color=None, mood="day", width=640, height=360, spp=16, blocky=False, floor_name=None,
+            floor_tex=None, platform=None):
     """Returns (scene_text, placed_objects)."""
     items = items[:MAX_OBJECTS]
     sw = SceneWriter()
     placed = layout(items)
+    PLATFORM_H = 0.6 if platform else 0.0       # a raised patch of ground under the objects
     for pl in placed:
-        pen = Pen(sw, pl["x"], pl["z"], pl["s"])
+        pen = Pen(sw, pl["x"], pl["z"], pl["s"], PLATFORM_H)
         OBJECTS[pl["key"]]["fn"](pen, pl["color"])
 
     base = {"day": DAY, "sunset": SUNSET, "night": NIGHT, "spooky": SPOOKY}.get(mood, DAY)
-    look = sky_from_color(sky) if sky else base
+    look = sky_from_color(sky) if sky else (BLOCKY_SKY if (blocky or floor_tex or platform) and mood == "day" else base)
     floor_mat = None
     ymax = max([OBJECTS[p["key"]]["height"] * p["s"] for p in placed] or [3.0])
     xmin = min([p["x"] - p["w"] / 2 for p in placed] or [-2])
@@ -803,7 +893,7 @@ def compose(items, sky=None, floor_color=None, mood="day", width=640, height=360
     cx, span = (xmin + xmax) / 2, xmax - xmin + 2.0
     dist = max(6.8, span * 0.86, ymax * 1.9)
     eye = (cx + dist * 0.12, ymax * 0.5 + 1.6, dist)
-    look_at = (cx, ymax * 0.42, -1.5 if has_back else 0.0)
+    look_at = (cx, ymax * 0.42 + PLATFORM_H, -1.5 if has_back else 0.0)
 
     night, sunset, spooky = mood == "night", mood == "sunset", mood == "spooky"
     ambient = 0.09 if night else (0.13 if spooky else (0.17 if sunset else 0.22))
@@ -814,13 +904,27 @@ def compose(items, sky=None, floor_color=None, mood="day", width=640, height=360
              "settings width %d height %d spp %d depth 5 ambient %s seed 7" % (width, height, spp, num(ambient)),
              "camera eye %s lookat %s up 0 1 0 fov 38" % (vec(eye), vec(look_at)),
              "background top %s bottom %s" % (vec(look["top"]), vec(look["bottom"])), ""]
-    if floor_color:
+    tex_floor = None
+    if floor_tex:
+        tex_floor = floor_tex
+    elif blocky and not floor_color:
+        tex_floor = "grass"
+    if tex_floor:
+        floor_def = "material floor matte color 0.88 0.88 0.88 texture %s scale 0.4 specular %s shininess 60%s" % (
+            tex_floor, "0.4" if tex_floor == "water" else "0.02", " glow 0.4" if tex_floor == "lava" else "")
+    elif floor_color:
         floor_def = "material floor matte color %s specular 0.05 shininess 20" % vec(floor_color)
     else:
         floor_def = "material floor matte color %s checker %s scale 1.4 specular 0.05 shininess 20" % (
             vec(look["floor"]), vec(look["check"]))
+    if platform:
+        pm = sw.texture(platform, (0.95, 0.95, 0.95), 0.25, 0.03, 30)
+        lines_platform = ["box min %s max %s material %s" % (
+            vec((xmin - 1.8, -0.02, (-5.0 if has_back else 0.0) - 2.2)), vec((xmax + 1.8, PLATFORM_H, 2.2)), pm)]
+    else:
+        lines_platform = []
     lines += sw.mat_lines + [floor_def, "", "plane point 0 0 0 normal 0 1 0 material floor", ""]
-    lines += sw.shape_lines + [""]
+    lines += lines_platform + sw.shape_lines + [""]
     lines += ["light position %s intensity %s color %s" % (vec((cx - 6, 9 + ymax, dist * 0.9)), num(key_int), vec(key_col)),
               "light position %s intensity %s color %s" % (vec((cx + 9, 5, dist * 0.6)), "0.55" if spooky else "0.4",
                                                        vec((0.55, 0.4, 1.0) if spooky else mix(key_col, (1, 1, 1), .4)))]

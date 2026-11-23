@@ -82,7 +82,7 @@ def images(name):
 
 @app.get("/api/health")
 def health():
-    return jsonify({"ok": True, "engine_found": os.path.isfile(ENGINE), "objects": len(builder.OBJECTS), "version": "1.1.0"})
+    return jsonify({"ok": True, "engine_found": os.path.isfile(ENGINE), "objects": len(builder.OBJECTS), "version": "1.2.0"})
 
 
 @app.get("/api/objects")
@@ -116,12 +116,13 @@ def compose():
         return fail(str(problem), 400)
 
     spec = reader.parse(text)
-    if not spec["items"]:
+    if not spec["items"] and not (spec["floor_tex"] or spec["platform"]):
         names = ", ".join(o["title"].lower() for o in list(builder.OBJECTS.values())[:12])
         extra = (" I did not know: %s." % ", ".join(spec["ignored"][:6])) if spec["ignored"] else ""
         return fail("I could not find an object in that. Try one of: %s, ...%s" % (names, extra), 400)
     scene, _ = builder.compose(spec["items"], sky=spec["sky"], floor_color=spec["floor"], mood=spec["mood"],
-                               width=width, height=height, spp=spp)
+                               width=width, height=height, spp=spp, blocky=spec["blocky"], floor_name=spec["floor_name"],
+                               floor_tex=spec["floor_tex"], platform=spec["platform"])
     return jsonify({"scene": scene, "understood": reader.describe(spec), "ignored": spec["ignored"][:8],
                     "notes": spec["notes"], "objects": len(spec["items"])})
 

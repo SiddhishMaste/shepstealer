@@ -31,6 +31,9 @@ expect_error "cylinder segments limited"      "segments must be between"  'camer
 expect_error "ellipsoid radius must be positive" "every radius must be greater" 'camera eye 0 0 5 lookat 0 0 0\nmaterial m matte\nellipsoid center 0 0 0 radii 1 0 1 material m\n'
 expect_error "torus radius must be positive"  "radius and tube must be greater" 'camera eye 0 0 5 lookat 0 0 0\nmaterial m matte\ntorus center 0 0 0 radius 0 tube 1 material m\n'
 expect_error "torus axis must not be zero"    "axis must not be"          'camera eye 0 0 5 lookat 0 0 0\nmaterial m matte\ntorus center 0 0 0 radius 1 tube 0.3 axis 0 0 0 material m\n'
+expect_error "unknown texture is named"       "unknown texture 'marble'"  'camera eye 0 0 5 lookat 0 0 0\nmaterial m matte texture marble\n'
+expect_error "texture and checker not mixed"  "not both"                  'camera eye 0 0 5 lookat 0 0 0\nmaterial m matte texture grass checker 0 0 0\n'
+expect_error "glow must be 0 to 2"            "glow must be between"      'camera eye 0 0 5 lookat 0 0 0\nmaterial m matte glow 5\n'
 
 echo "Limits and output"
 $BIN scenes/spheres.txt "$TMP/o.png" --width 5000 >/dev/null 2>&1 && bad "width limit" || ok "width limit enforced"
@@ -50,6 +53,10 @@ $BIN scenes/spheres.txt "$TMP/c.ppm" --width 96 --height 54 --spp 4 --threads 2 
 $BIN scenes/spheres.txt "$TMP/d.ppm" --width 96 --height 54 --spp 4 --threads 2 --seed 5 >/dev/null 2>&1
 cmp -s "$TMP/c.ppm" "$TMP/d.ppm" && ok "same seed gives identical image" || bad "same seed gives identical image"
 $BIN scenes/shapes.txt "$TMP/s.png" --width 64 --height 36 --spp 1 >/dev/null 2>&1 && [ -s "$TMP/s.png" ] && ok "box, cylinder and cone render" || bad "box, cylinder and cone render"
+$BIN scenes/blocks.txt "$TMP/b.png" --width 64 --height 36 --spp 1 >/dev/null 2>&1 && [ -s "$TMP/b.png" ] && ok "block textures render" || bad "block textures render"
+$BIN scenes/blocks.txt "$TMP/e.ppm" --width 80 --height 45 --spp 2 --threads 1 >/dev/null 2>&1
+$BIN scenes/blocks.txt "$TMP/f.ppm" --width 80 --height 45 --spp 2 --threads 4 >/dev/null 2>&1
+cmp -s "$TMP/e.ppm" "$TMP/f.ppm" && ok "textured scene same with 1 and 4 threads" || bad "textured scene same with 1 and 4 threads"
 
 rm -rf "$TMP"
 echo; echo "$pass passed, $fail failed"

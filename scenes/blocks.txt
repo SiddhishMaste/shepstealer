@@ -1,0 +1,21 @@
+# Block textures demo (Update 1.2)
+settings width 640 height 360 spp 8 depth 5
+camera eye 0 4 12 lookat 0 1.2 0 up 0 1 0 fov 40
+background top 0.47 0.66 1.0 bottom 0.8 0.9 1.0
+material grass matte color 1 1 1 texture grass scale 0.25 specular 0.02
+material dirt matte color 1 1 1 texture dirt scale 0.25 specular 0.02
+material stone matte color 1 1 1 texture stone scale 0.25 specular 0.05
+material water matte color 1 1 1 texture water scale 0.25 specular 0.5 shininess 80
+material lava matte color 1 1 1 texture lava scale 0.25 glow 0.85 specular 0
+material cloud matte color 1 1 1 texture cloud scale 0.3 specular 0
+material planks matte color 1 1 1 texture planks scale 0.2 specular 0.02
+material bricks matte color 1 1 1 texture bricks scale 0.2 specular 0.02
+plane point 0 0 0 normal 0 1 0 material grass
+box min -5 0 -1 max -3.5 1.5 0.5 material stone
+box min -3 0 -1 max -1.5 1.5 0.5 material lava
+box min -1 0 -1 max 0.5 1.5 0.5 material water
+box min 1 0 -1 max 2.5 1.5 0.5 material planks
+box min 3 0 -1 max 4.5 1.5 0.5 material bricks
+box min -2 4 -3 max 1 4.8 -1.5 material cloud
+light position -6 10 8 intensity 1.0 color 1 1 1
+light position 9 5 7 intensity 0.4 color 1 1 1

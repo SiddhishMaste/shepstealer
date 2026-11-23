@@ -80,3 +80,10 @@ python3 -m venv .venv && .venv/bin/pip install -r server/requirements.txt
 - New `spooky` look, ground words (graveyard, cemetery, swamp, mud, dirt, lava) and the scene words `graveyard` and `halloween`.
 - Engine: new `torus` shape and half ellipsoids (`half 1` / `half -1`); the donut now uses a real torus. 27 engine tests.
 - Website: Halloween theme (with a Classic look switch), patch notes in About, New tags in the gallery.
+
+## Update 1.2: Block textures
+
+- Engine: `texture` option for materials (grass, dirt, stone, sand, planks, water, lava, cloud, snow, leaves, bricks) with block size set by `scale`, and a `glow` option. Demo scene: `scenes/blocks.txt`. 32 engine tests.
+- Textured ground words (lava, sand, water, snow, stone, cobblestone, dirt, planks, bricks) and a raised centre platform: "a centre cobblestone ground on lava with a house on it".
+- 8 block objects (grass, stone, lava and water blocks, tree, cloud, house, sheep): 60 objects in total.
+- The word `blocky` (or `pixel`) draws the ground and sky in blocks; a scene of only block objects does it automatically.
