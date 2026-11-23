@@ -94,5 +94,30 @@ check("ground words give textured ground without blocky", prompt.parse("a car on
 check("platform box is written", "box min" in builder.compose([dict(key="house", color=None, row="front", hint=None)], floor_tex="lava", platform="stone")[0])
 check("platform texture in scene", "texture stone" in builder.compose([dict(key="house", color=None, row="front", hint=None)], floor_tex="lava", platform="stone")[0])
 
+# ---- Update 1.3: directions
+def rels(q):
+    return [(i["key"], i["rel"]) for i in prompt.parse(q)["items"]]
+def place(q):
+    return {i: p for i, p in enumerate(builder.layout(prompt.parse(q)["items"]))}
+check("on top of parses", rels("a cat on top of a table")[0][1] == ("ontop", 1))
+check("right of parses", rels("a house with a tree to its right")[1][1] == ("rightof", 0))
+check("count above parses", all(r == ("above", 3) for _, r in rels("3 bats above a house")[:3]))
+check("plain scene has no relations", all(r is None for _, r in rels("a car on grass")))
+_p = place("a cat on top of a table")
+check("cat sits on table surface", abs(_p[0]["y"] - 1.2) < 1e-6 and abs(_p[0]["x"] - _p[1]["x"]) < 1e-6)
+_p = place("a house with a tree to its right")
+check("tree is right of house", _p[1]["x"] > _p[0]["x"] + _p[0]["w"] / 2)
+_p = place("a tree on the left of a house")
+check("tree is left of house", _p[0]["x"] < _p[1]["x"] - _p[1]["w"] / 2)
+_p = place("3 bats above a house")
+check("bats float above roof", all(_p[i]["y"] > 3 for i in range(3)))
+_p = place("a ball in front of the house")
+check("ball is in front", _p[0]["z"] > _p[1]["z"])
+_p = place("a ghost behind the tombstone")
+check("ghost is behind", _p[0]["z"] < _p[1]["z"])
+_p = place("a bunny under a table")
+check("bunny shrinks under table", _p[0]["s"] < 0.5)
+check("compose with relations works", "sphere" in builder.compose(prompt.parse("a ball on top of a table")["items"])[0])
+
 print("\n%d passed, %d failed" % (passed, failed))
 sys.exit(1 if failed else 0)

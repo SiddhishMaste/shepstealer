@@ -82,7 +82,7 @@ def images(name):
 
 @app.get("/api/health")
 def health():
-    return jsonify({"ok": True, "engine_found": os.path.isfile(ENGINE), "objects": len(builder.OBJECTS), "version": "1.2.0"})
+    return jsonify({"ok": True, "engine_found": os.path.isfile(ENGINE), "objects": len(builder.OBJECTS), "version": "1.3.0"})
 
 
 @app.get("/api/objects")

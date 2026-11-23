@@ -87,3 +87,7 @@ python3 -m venv .venv && .venv/bin/pip install -r server/requirements.txt
 - Textured ground words (lava, sand, water, snow, stone, cobblestone, dirt, planks, bricks) and a raised centre platform: "a centre cobblestone ground on lava with a house on it".
 - 8 block objects (grass, stone, lava and water blocks, tree, cloud, house, sheep): 60 objects in total.
 - The word `blocky` (or `pixel`) draws the ground and sky in blocks; a scene of only block objects does it automatically.
+
+## Update 1.3: Directions
+
+The prompt reader understands where objects stand relative to each other: right of, left of, beside / next to, above, on top of, under / below, in front of and behind. Examples: `a cat on top of a table`, `a house with a tree to its right and 3 bats above it`, `a bunny under a table`. `builder.layout()` places related objects after the row-based ones, and `compose()` widens the camera and platform to fit.

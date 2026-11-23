@@ -6,6 +6,20 @@ from builder import COLORS, COLOR_ALIASES, OBJECTS, MAX_OBJECTS, BLOCK_KEYS, TEX
 
 # Phrases that mean one thing; they are joined into one word before reading.
 PHRASES = [
+    # directions (Update 1.3). Longest phrases first.
+    ("to the left of it", "leftof it"), ("to the right of it", "rightof it"), ("on the left of it", "leftof it"),
+    ("on the right of it", "rightof it"), ("to its left", "leftof it"), ("to its right", "rightof it"),
+    ("on its left", "leftof it"), ("on its right", "rightof it"), ("on top of it", "ontop it"),
+    ("on top of", "ontop"), ("at the top of", "ontop"), ("top of", "ontop"), ("sitting on", "ontop"),
+    ("standing on", "ontop"), ("resting on", "ontop"), ("atop", "ontop"),
+    ("on the left of", "leftof"), ("to the left of", "leftof"), ("on the right of", "rightof"),
+    ("to the right of", "rightof"), ("left of", "leftof"), ("right of", "rightof"),
+    ("in front of", "infront"), ("in back of", "behind"), ("at the back of", "behind"),
+    ("next to", "beside"), ("close to", "beside"), ("adjacent to", "beside"), ("alongside", "beside"),
+    ("besides", "beside"), ("near", "beside"), ("by", "beside"),
+    ("floating above", "above"), ("flying above", "above"), ("high above", "above"), ("hovering over", "above"),
+    ("flying over", "above"), ("over", "above"),
+    ("underneath", "under"), ("beneath", "under"), ("below", "under"),
     ("ice cream cone", "icecream"), ("ice-cream", "icecream"), ("ice cream", "icecream"),
     ("teddy bear", "teddy"), ("toy car", "car"), ("race car", "car"), ("sports car", "car"),
     ("christmas tree", "xmastree"), ("xmas tree", "xmastree"), ("pine tree", "xmastree"),
@@ -46,6 +60,8 @@ GROUND_TEX = {"lava": "lava", "water": "water", "grass": "grass", "dirt": "dirt"
               "bricks": "bricks", "brick": "bricks"}
 GROUND_NOUNS = {"ground", "floor", "platform", "island", "base", "pad", "patch"}
 PLATFORM_NOUNS = {"platform", "island", "pad", "patch", "base"}
+REL_KINDS = {"ontop", "above", "under", "leftof", "rightof", "beside", "infront", "behind"}
+REL_FILLER = {"a", "an", "the", "some", "its", "it", "his", "her", "their", "this", "that", "one", "another"}
 BG_WORDS = {"background", "backdrop", "sky", "wall", "bg"}
 FLOOR_WORDS = {"ground", "floor", "carpet", "surface"}
 POS_LEFT, POS_RIGHT, POS_CENTER = {"left"}, {"right"}, {"center", "centre", "middle"}
@@ -194,6 +210,38 @@ def parse(text):
     # 3. objects with colour, count and position
     items = []
     obj_positions = [i for i in range(n) if kinds[i] == "obj"]
+
+    # 2b. directions between two objects: "a cat on top of a table", "a tree to its right"
+    rel_at = {}                  # subject token index -> (kind, anchor token index)
+    rel_tokens = set()
+    for r, w in enumerate(tokens):
+        kind = w if w in REL_KINDS else ("ontop" if w in ("on", "onto") else None)
+        if not kind:
+            continue
+        subs = [i for i in obj_positions if i < r]
+        if not subs:
+            continue
+        sub = subs[-1]
+        j, pronoun = r + 1, False
+        while j < n and (tokens[j] in REL_FILLER or kinds[j] == "col" or tokens[j].isdigit() or tokens[j] in NUMBERS):
+            pronoun = pronoun or tokens[j] in ("it", "its")
+            j += 1
+        if j < n and kinds[j] == "obj" and not pronoun:
+            anchor = j
+        elif pronoun:
+            prev = [i for i in obj_positions if i < sub]
+            if not prev:
+                continue
+            anchor = prev[-1]
+        else:
+            continue
+        if anchor == sub or sub in rel_at:
+            continue
+        rel_at[sub] = (kind, anchor)
+        for k in range(r, min(j if not pronoun else j, n)):
+            if tokens[k] in REL_FILLER or k == r:
+                rel_tokens.add(k)
+        used[r] = True
     for idx, i in enumerate(obj_positions):
         base = singular(tokens[i])
         key = OBJECT_WORDS[base]
@@ -233,6 +281,9 @@ def parse(text):
         k = i + 1
         while k < end and tokens[k] not in (",", "and"):
             w = tokens[k]
+            if k in rel_tokens:
+                k += 1
+                continue
             if w in POS_BACK or (w in BG_WORDS and not used[k]):
                 row = "back"; used[k] = True
             elif w == "front":
@@ -247,7 +298,7 @@ def parse(text):
         # "background trees": the word just before the object
         if i > 0 and tokens[i - 1] in ("background", "behind", "back"):
             row = "back"
-        items.append(dict(key=key, color=color, count=count, row=row, hint=hint))
+        items.append(dict(key=key, color=color, count=count, row=row, hint=hint, tok=i))
 
     # group words (forest, village, party ...) when no plain objects were named
     for i, w in enumerate(tokens):
@@ -274,14 +325,42 @@ def parse(text):
 
     if items and all(it["key"] in BLOCK_KEYS for it in items):
         blocky = True          # only block objects: draw the whole world in blocks
-    flat = []
-    for it in items:
+    # resolve directions: token index -> item index
+    item_of = {it["tok"]: ii for ii, it in enumerate(items) if "tok" in it}
+    for sub, (kind, anchor) in rel_at.items():
+        if sub in item_of and anchor in item_of:
+            items[item_of[sub]]["rel"] = (kind, item_of[anchor])
+    for ii, it in enumerate(items):          # break loops such as "A above B, B above A"
+        seen, cur = {ii}, it
+        while cur.get("rel"):
+            nxt = cur["rel"][1]
+            if nxt in seen:
+                it["rel"] = None
+                notes.append("Two objects were placed relative to each other; one direction was ignored.")
+                break
+            seen.add(nxt)
+            cur = items[nxt]
+    flat, first = [], {}
+    for ii, it in enumerate(items):
+        first[ii] = len(flat)
         for _ in range(it["count"]):
-            flat.append(dict(key=it["key"], color=it["color"], row=it["row"], hint=it["hint"]))
+            flat.append(dict(key=it["key"], color=it["color"], row=it["row"], hint=it["hint"], rel=None))
+    for ii, it in enumerate(items):
+        if it.get("rel"):
+            kind, ai = it["rel"]
+            for c in range(it["count"]):
+                flat[first[ii] + c]["rel"] = (kind, first[ai])
     if len(flat) > MAX_OBJECTS:
         notes.append("Only the first %d objects are drawn." % MAX_OBJECTS)
         flat = flat[:MAX_OBJECTS]
+    for f in flat:
+        if f["rel"] and f["rel"][1] >= len(flat):
+            f["rel"] = None
     return dict(items=flat, groups=items, sky=sky, sky_name=sky_name, floor=floor, floor_name=floor_name, mood=mood, blocky=blocky, floor_tex=floor_tex, platform=platform, ignored=ignored, notes=notes)
+
+
+REL_TEXT = {"ontop": "on top of", "above": "above", "under": "under", "leftof": "left of", "rightof": "right of",
+            "beside": "beside", "infront": "in front of", "behind": "behind"}
 
 
 def color_name(c):
@@ -305,6 +384,8 @@ def describe(spec):
             bit += " (background)"
         if it["hint"]:
             bit += " (%s)" % it["hint"]
+        if it.get("rel"):
+            bit += " (%s %s)" % (REL_TEXT[it["rel"][0]], OBJECTS[spec["groups"][it["rel"][1]]["key"]]["title"].lower())
         parts.append(bit)
     out = ", ".join(parts)
     extra = []

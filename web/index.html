@@ -244,7 +244,7 @@
       <a class="tab" href="#/about" data-view="about"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v6"/><path d="M12 7.5v.01"/></svg>About</a>
     </nav>
     <div class="right">
-      <a class="ver" href="#/about" title="See the patch notes">Update 1.2</a>
+      <a class="ver" href="#/about" title="See the patch notes">Update 1.3</a>
       <button class="themebtn" id="themeBtn" type="button"></button>
       <a class="code-link" href="https://github.com/SiddhishMaste/shepstealer">Code</a>
     </div>
@@ -257,7 +257,8 @@
   <section class="view" id="view-create" data-title="Create">
     <div class="event" id="event" hidden>
       <svg viewBox="0 0 64 64" aria-hidden="true"><path d="M32 6c-17 0-26 12-26 26s10 24 26 24 26-10 26-24S49 6 32 6z" fill="#ff7a1a"/><path d="M28 7c-6 8-6 42 0 50M36 7c6 8 6 42 0 50" stroke="#c24f00" stroke-width="2" fill="none"/><path d="M30 7l1-6 6-1-1 7z" fill="#8ae234"/><path d="M17 28l7-7 3 7zM37 28l3-7 7 7zM20 40q12 10 24 0" fill="#ffd34d" stroke="#ffd34d" stroke-width="2"/></svg>
-      <div><b>Update 1.2: Block textures</b><span>Pixel-block grass, water, lava, stone, clouds and more, 8 block objects and a blocky look. Try <a href="#/create" data-try="a lava ground with a sky background and a centre cobblestone ground on lava with a house on it">a house on a stone island in lava</a>, <a href="#/create" data-try="a block house with 2 block trees and a block sheep, a block cloud in the background">a block village</a>, or the <a href="#/create" data-try="a haunted house and a moon in the background with 2 jack-o'-lanterns, a ghost and a tombstone, spooky">Halloween scene</a>. Read the <a href="#/about">patch notes</a>.</span></div>
+      <div><b>Update 1.3: Directions</b><span>Say where things go: left, right, beside, above, on top, under, in front, behind. Try <a href="#/create" data-try="a cat on top of a table">a cat on top of a table</a>, <a href="#/create" data-try="a house with a tree to its right and 3 bats above it">a tree right of a house, bats above</a>, or <a href="#/create" data-try="a lava ground with a sky background and a centre cobblestone ground on lava with a house on it">a house on a stone island in lava</a>. Read the <a href="#/about">patch notes</a>.</span></div>
+      <div hidden><b>old</b><span>Try <a href="#/create" data-try="a lava ground with a sky background and a centre cobblestone ground on lava with a house on it">a house on a stone island in lava</a>, <a href="#/create" data-try="a block house with 2 block trees and a block sheep, a block cloud in the background">a block village</a>, or the <a href="#/create" data-try="a haunted house and a moon in the background with 2 jack-o'-lanterns, a ghost and a tombstone, spooky">Halloween scene</a>. Read the <a href="#/about">patch notes</a>.</span></div>
       <button type="button" id="eventX" aria-label="Hide this message">&times;</button>
     </div>
     <div class="hero-wrap">
@@ -327,6 +328,8 @@
         <button class="chip" data-try="a slime ghost and a blood witch hat">a slime ghost, a blood witch hat</button><button class="chip" data-try="3 plum candy corn">3 plum candy corn</button></div>
       <div class="step"><h3>Set the scene</h3><p>Say where things go, and add a background, ground or time of day.</p>
         <button class="chip" data-try="a house with green trees in the background on a lavender background">trees in the background, lavender sky</button><button class="chip" data-try="a cauldron and a broomstick on a graveyard, spooky">cauldron on a graveyard</button><button class="chip" data-try="a snowman and an igloo on snow at sunset">snow at sunset</button></div>
+      <div class="step"><h3>Place things</h3><p>Say how one thing sits next to another: left of, right of, beside, above, on top of, under, in front of, behind.</p>
+        <button class="chip" data-try="a cat on top of a table">cat on top of a table</button><button class="chip" data-try="a tree on the left of a house and a car on the right">tree left, car right</button><button class="chip" data-try="a ball in front of the house and a ghost behind it">ball in front, ghost behind</button></div>
     </div>
     <h3 id="colorsTitle">Colours</h3>
     <p class="lead" style="margin-bottom:12px">Click a colour to add it to your sentence.</p>
@@ -378,7 +381,25 @@
     <p class="lead">What changed in each version, newest first.</p>
     <div class="notes">
       <article class="note latest">
-        <header><h3>Update 1.2: Block textures</h3><span class="badge">Latest</span><time datetime="2026-11-23">23 November 2026</time></header>
+        <header><h3>Update 1.3: Directions</h3><span class="badge">Latest</span><time datetime="2026-11-23">23 November 2026</time></header>
+        <h4>Prompt reader</h4>
+        <ul><li>Objects can now be placed relative to each other: <i>to the right of</i>, <i>to the left of</i>, <i>beside</i> / <i>next to</i>, <i>above</i> / <i>over</i>, <i>on top of</i> / <i>on</i>, <i>under</i> / <i>below</i>, <i>in front of</i> and <i>behind</i>.</li>
+            <li>Words like <i>its</i>, <i>it</i> and <i>the</i> work: <i>a house with a tree to its right</i>.</li>
+            <li>Counts work too: <i>3 bats above a house</i> puts all three over the house.</li>
+            <li>The reader tells you what it understood, for example "cat (on top of table)".</li></ul>
+        <h4>Placement</h4>
+        <ul><li>Things on top of a table, chair or bench sit on its real surface. Things above float over the roof.</li>
+            <li>Under works for a table or bench: the object is shrunk to fit. Anything else goes in front instead, with a note.</li>
+            <li>Related objects use the same size as the one they are placed against. The camera and platform widen to fit.</li>
+            <li>The older words (left, right, background) still work as before.</li></ul>
+        <h4>Known issues</h4>
+        <ul><li>Big objects in front of small ones can hide them.</li>
+            <li>Two directions for one object (for example left of one thing and above another) use the first one.</li></ul>
+      </article>
+      <details class="note old">
+        <summary>Update 1.2: Block textures (23 November 2026)</summary>
+        <div style="margin-top:10px">
+        <h4>Engine</h4>
         <h4>Engine</h4>
         <ul><li>New <code>texture</code> option for materials: grass, dirt, stone, sand, planks, water, lava, cloud, snow, leaves and bricks. Every block of space gets one flat colour, so surfaces look like pixel art.</li>
             <li>New <code>glow</code> option, so lava and clouds light themselves.</li>
@@ -398,7 +419,8 @@
         <h4>Known issues</h4>
         <ul><li>Block cloud and block sheep are drawn from simple boxes, so their faces are very plain.</li>
             <li>Textures use a 3D block grid, so a sphere gets chunky blocks too.</li></ul>
-      </article>
+      </div>
+      </details>
       <details class="note old">
         <summary>Update 1.1: Halloween (22 November 2026)</summary>
         <ul style="margin-top:10px"><li>13 Halloween objects, 8 colours (slime, ember, plum, ink, blood, bone, frost, rust), a spooky look and graveyard, cemetery, swamp, mud, dirt and lava ground words.</li>
@@ -426,7 +448,7 @@
       <div class="fact"><b>60</b><span>objects to choose from</span></div>
       <div class="fact"><b>34</b><span>colours, plus 4 times of day</span></div>
       <div class="fact"><b>32</b><span>engine tests, all passing</span></div>
-      <div class="fact"><b>15</b><span>prompt reader tests, all passing</span></div>
+      <div class="fact"><b>50</b><span>prompt reader tests, all passing</span></div>
     </div>
     <div class="two">
       <div>
@@ -535,8 +557,8 @@ function setTheme(name) {
 }
 $("themeBtn").addEventListener("click", () => setTheme(document.documentElement.dataset.theme === "classic" ? "halloween" : "classic"));
 $("themeBtn").textContent = document.documentElement.dataset.theme === "classic" ? "Halloween look" : "Classic look";
-try { $("event").hidden = localStorage.getItem("sheep-event-1.2") === "x"; } catch (e) { $("event").hidden = false; }
-$("eventX").addEventListener("click", () => { $("event").hidden = true; try { localStorage.setItem("sheep-event-1.2", "x"); } catch (e) {} });
+try { $("event").hidden = localStorage.getItem("sheep-event-1.3") === "x"; } catch (e) { $("event").hidden = false; }
+$("eventX").addEventListener("click", () => { $("event").hidden = true; try { localStorage.setItem("sheep-event-1.3", "x"); } catch (e) {} });
 
 /* ---------- pages ---------- */
 function route() {

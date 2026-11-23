@@ -851,25 +851,90 @@ def sky_from_color(c):
                 floor=mix(c, (1, 1, 1), 0.62), check=mix(c, (1, 1, 1), 0.48))
 
 
+SURFACE = {"table": 1.2, "chair": 1.0, "bench": 0.9}     # height of the top surface when it is not the object's full height
+CLEARANCE = {"table": 1.0, "bench": 0.75}                 # room underneath, so something small fits "under" it
+
+
 def layout(items):
-    """items: list of dict(key, color, row, hint). Returns placed objects."""
+    """items: list of dict(key, color, row, hint, rel). rel = (kind, index of the anchor object).
+    Returns placed objects: x, z, y (lift), s (scale), w (width)."""
     rank = {"left": 0, None: 1, "center": 1, "right": 2}
-    placed = []
+    placed = {}
+    free = [i for i, it in enumerate(items) if not it.get("rel") or it["rel"][1] >= len(items)]
     for row, z in (("front", 0.0), ("back", -5.0)):
-        row_items = [it for it in items if it["row"] == row]
-        row_items.sort(key=lambda it: rank.get(it["hint"], 1))
-        if not row_items:
+        row_idx = [i for i in free if items[i]["row"] == row]
+        row_idx.sort(key=lambda i: rank.get(items[i]["hint"], 1))
+        if not row_idx:
             continue
-        widths = [OBJECTS[it["key"]]["width"] for it in row_items]
+        widths = [OBJECTS[items[i]["key"]]["width"] for i in row_idx]
         total = sum(widths) + GAP * (len(widths) - 1)
         scale = min(1.0, 24.0 / total)
         total *= scale
         x = -total / 2
-        for it, w in zip(row_items, widths):
+        for i, w in zip(row_idx, widths):
             w *= scale
-            placed.append(dict(it, x=x + w / 2, z=z, s=scale, w=w))
+            placed[i] = dict(items[i], x=x + w / 2, z=z, y=0.0, s=scale, w=w)
             x += w + GAP * scale
-    return placed
+
+    todo = [i for i in range(len(items)) if i not in placed]
+    for _ in range(len(items) + 1):                  # anchors first, then the objects that depend on them
+        groups = {}
+        for i in todo:
+            kind, a = items[i]["rel"]
+            if a in placed:
+                groups.setdefault((a, kind), []).append(i)
+        if not groups:
+            break
+        for (a, kind), members in groups.items():
+            anc = placed[a]
+            akey = anc["key"]
+            s = anc["s"]
+            ah = OBJECTS[akey]["height"] * s
+            top = SURFACE.get(akey, OBJECTS[akey]["height"]) * s
+            ws = [OBJECTS[items[m]["key"]]["width"] * s for m in members]
+            gap = GAP * s
+            if kind == "under" and akey not in CLEARANCE:
+                kind = "infront"
+            if kind in ("rightof", "leftof", "beside"):
+                right = anc["x"] + anc["w"] / 2 + gap
+                left = anc["x"] - anc["w"] / 2 - gap
+                for n_, (m, w) in enumerate(zip(members, ws)):
+                    go_right = kind == "rightof" or (kind == "beside" and n_ % 2 == 0)
+                    if go_right:
+                        x = right + w / 2; right += w + gap
+                    else:
+                        x = left - w / 2; left -= w + gap
+                    placed[m] = dict(items[m], x=x, z=anc["z"], y=anc["y"], s=s, w=w)
+            elif kind in ("infront", "behind"):
+                total = sum(ws) + gap * (len(ws) - 1)
+                x = anc["x"] - total / 2
+                depth = max(ws + [anc["w"]]) * 0.45
+                zoff = anc["w"] * 0.3 + depth + 0.8 * s
+                z = anc["z"] + (zoff if kind == "infront" else -zoff)
+                for m, w in zip(members, ws):
+                    placed[m] = dict(items[m], x=x + w / 2, z=z, y=anc["y"], s=s, w=w)
+                    x += w + gap
+            else:                                     # above, on top of, under
+                total = sum(ws) + gap * (len(ws) - 1)
+                if kind == "ontop" and total > anc["w"] * 1.1 and len(ws) > 1:
+                    total = max(anc["w"] * 0.9, sum(ws) * 0.6)     # let them overlap a little instead of hanging off
+                x = anc["x"] - total / 2
+                step = (total - ws[0]) / max(1, len(ws) - 1) if len(ws) > 1 else 0
+                for n_, (m, w) in enumerate(zip(members, ws)):
+                    cx = anc["x"] if len(ws) == 1 else x + ws[0] / 2 + n_ * step
+                    ms = s
+                    if kind == "above":
+                        y = anc["y"] + ah + 0.9 * s
+                    elif kind == "ontop":
+                        y = anc["y"] + top
+                    else:
+                        y = anc["y"]
+                        ms = s * min(1.0, 0.85 * CLEARANCE[akey] / OBJECTS[items[m]["key"]]["height"])
+                    placed[m] = dict(items[m], x=cx, z=anc["z"], y=y, s=ms, w=w * ms / s)
+            todo = [i for i in todo if i not in placed]
+    for i in todo:                                    # anything left over (a loop) goes in the front row
+        placed[i] = dict(items[i], x=0.0, z=0.0, y=0.0, s=1.0, w=OBJECTS[items[i]["key"]]["width"])
+    return [placed[i] for i in range(len(items))]
 
 
 def compose(items, sky=None, floor_color=None, mood="day", width=640, height=360, spp=16, blocky=False, floor_name=None,
@@ -880,19 +945,21 @@ def compose(items, sky=None, floor_color=None, mood="day", width=640, height=360
     placed = layout(items)
     PLATFORM_H = 0.6 if platform else 0.0       # a raised patch of ground under the objects
     for pl in placed:
-        pen = Pen(sw, pl["x"], pl["z"], pl["s"], PLATFORM_H)
+        pen = Pen(sw, pl["x"], pl["z"], pl["s"], PLATFORM_H + pl["y"])
         OBJECTS[pl["key"]]["fn"](pen, pl["color"])
 
     base = {"day": DAY, "sunset": SUNSET, "night": NIGHT, "spooky": SPOOKY}.get(mood, DAY)
     look = sky_from_color(sky) if sky else (BLOCKY_SKY if (blocky or floor_tex or platform) and mood == "day" else base)
     floor_mat = None
-    ymax = max([OBJECTS[p["key"]]["height"] * p["s"] for p in placed] or [3.0])
+    ymax = max([OBJECTS[p["key"]]["height"] * p["s"] + p["y"] for p in placed] or [3.0])
     xmin = min([p["x"] - p["w"] / 2 for p in placed] or [-2])
     xmax = max([p["x"] + p["w"] / 2 for p in placed] or [2])
     has_back = any(p["z"] < 0 for p in placed)
+    zmin = min([p["z"] for p in placed] or [0.0])
+    zmax = max([p["z"] for p in placed] or [0.0])
     cx, span = (xmin + xmax) / 2, xmax - xmin + 2.0
     dist = max(6.8, span * 0.86, ymax * 1.9)
-    eye = (cx + dist * 0.12, ymax * 0.5 + 1.6, dist)
+    eye = (cx + dist * 0.12, ymax * 0.5 + 1.6, dist + max(0.0, zmax))
     look_at = (cx, ymax * 0.42 + PLATFORM_H, -1.5 if has_back else 0.0)
 
     night, sunset, spooky = mood == "night", mood == "sunset", mood == "spooky"
@@ -920,7 +987,7 @@ def compose(items, sky=None, floor_color=None, mood="day", width=640, height=360
     if platform:
         pm = sw.texture(platform, (0.95, 0.95, 0.95), 0.25, 0.03, 30)
         lines_platform = ["box min %s max %s material %s" % (
-            vec((xmin - 1.8, -0.02, (-5.0 if has_back else 0.0) - 2.2)), vec((xmax + 1.8, PLATFORM_H, 2.2)), pm)]
+            vec((xmin - 1.8, -0.02, zmin - 2.2)), vec((xmax + 1.8, PLATFORM_H, zmax + 2.2)), pm)]
     else:
         lines_platform = []
     lines += sw.mat_lines + [floor_def, "", "plane point 0 0 0 normal 0 1 0 material floor", ""]
